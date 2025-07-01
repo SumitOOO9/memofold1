@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const path = window.location.pathname.toLowerCase();
-  const API_BASE = "http://127.0.0.1:3000/api";
+  const API_BASE = "https://memofold1.onrender.com/api";
 
 
   // ========== LOGIN ==========
@@ -122,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
-          const response = await fetch("http://localhost:3000/api/auth/request-reset", {
+          const response = await fetch(`${API_BASE}/auth/request-reset`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: value }) // Using "email" field for both email/username
@@ -178,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
-          const response = await fetch(`http://localhost:3000/api/auth/reset-password/${token}`, {
+          const response = await fetch(`${API_BASE}/auth/reset-password/${token}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ password }) // ✅ Only send password
@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
           const token = localStorage.getItem("token");
-          const response = await fetch("http://localhost:3000/api/posts", {
+          const response = await fetch(`${API_BASE}/posts`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -373,7 +373,7 @@ if (path.includes("mainFeed.html")) {
 
     const feed = document.getElementById("feed");
 
-    fetch("http://localhost:3000/api/posts", {
+    fetch(`${API_BASE}/posts`, {
 
       headers: {
         Authorization: `Bearer ${token}`
@@ -433,7 +433,7 @@ if (path.includes("mainFeed.html")) {
         const token = localStorage.getItem("token");
         if (!token || !profilePicImg) return;
 
-        const res = await fetch("http://localhost:3000/api/user/me", {
+        const res = await fetch(`${API_BASE}/user/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -456,7 +456,7 @@ if (path.includes("mainFeed.html")) {
         const token = localStorage.getItem("token");
         const username = localStorage.getItem("username");
 
-        const response = await fetch(`http://localhost:3000/api/posts/user/${username}`, {
+        const response = await fetch(`${API_BASE}/posts/user/${username}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -529,7 +529,7 @@ if (path.includes("mainFeed.html")) {
 
         try {
           const token = localStorage.getItem("token");
-          const res = await fetch("http://localhost:3000/api/user/upload-profile-pic", {
+          const res = await fetch(`${API_BASE}/user/upload-profile-pic`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
@@ -591,7 +591,7 @@ if (path.includes("mainFeed.html")) {
       }
 
       try {
-        const res = await fetch("http://localhost:3000/api/feedback", {
+        const res = await fetch(`${API_BASE}/feedback`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
