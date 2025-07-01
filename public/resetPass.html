@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reset Password - MemoFold</title>
+  <link rel="stylesheet" href="resetPass.css">
+  <link rel="icon" href="logo.png" type="image/png">
+</head>
+<body>
+  <div class="reset-container">
+    <div class="reset-box">
+      <img src="logo.png" alt="MemoFold Logo" class="logo" />
+      <h1>MemoFold</h1>
+      <h2>Reset your password</h2>
+      <p>Enter your new password below.</p>
+
+      <form id="resetForm">
+        <input type="password" id="newPassword" placeholder="New Password" required>
+        <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+        <button type="submit" class="reset-btn">Reset Password</button>
+      </form>
+
+      <button class="back-btn" onclick="location.href='login.html'">Back to Login</button>
+    </div>
+  </div>
+ <script src="script.js"></script>
+</body>
+</html>

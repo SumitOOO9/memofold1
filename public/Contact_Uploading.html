@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact & Upload - MemoFold</title>
+  <link rel="stylesheet" href="Contact_Uploading.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="top-bar">
+    </div>
+      <a href="#" class="login-btn">
+        <img src="logo.png" alt="Login" class="login-icon" />
+        Log in
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Page Header -->
+    <header class="main-header">
+      <h1>🔗 Contact Uploading & Non-User Policy</h1>
+      <p class="subtitle">
+        At <strong>MemoFold</strong>, we believe that your connections define your digital story. Whether you’ve added a friend or discovered a past memory, every interaction matters.
+      </p>
+      <p class="subtitle">
+        This page outlines how we use your contact information responsibly, how we treat individuals who are not yet members of our platform, and how we ensure transparency and control are always in your hands.
+      </p>
+      <p class="subtitle">
+        From the moment you sync your contacts, we prioritize safety, consent, and respect — because your trust is our most important connection.
+      </p>
+    </header>
+
+    <!-- Info Section -->
+    <section class="info">
+      <details open>
+        <summary>📇 <strong>What is Contact Uploading and Why Do We Use It?</strong></summary>
+        <p>
+          Contact uploading is a feature that allows MemoFold to sync with your address book — but only with your explicit permission. This helps you discover friends who are already on the platform, reconnect with people you care about, and create meaningful connections through shared memories and posts.
+        </p>
+        <p>
+          It's important to note: contact syncing does not post anything or notify your contacts. It simply enhances your experience by making connections easier and more personalized.
+        </p>
+      </details>
+
+      <details>
+        <summary>👤 <strong>How We Respect the Privacy of Non-Members</strong></summary>
+        <p>
+          Not everyone is on MemoFold — and that’s okay. When you upload contacts that include people who haven’t joined, we never create profiles for them or store unnecessary data. Their information is used solely to improve your experience, such as suggesting people you may know.
+        </p>
+        <p>
+          We never send invitations or emails to these individuals on your behalf without your permission. If a non-user requests removal from our system, we honor that request immediately.
+        </p>
+      </details>
+
+      <details>
+        <summary>🔒 <strong>Your Contacts, Your Control — How We Secure Your Data</strong></summary>
+        <p>
+          Your contact information is encrypted from the moment it's uploaded. We follow industry best practices in data security, and we do not sell, trade, or share your contact data with any third parties.
+        </p>
+        <p>
+          You have full control — you can view your synced contacts, manage visibility, or delete uploaded data at any time through your account settings. No hidden steps, no fine print.
+        </p>
+      </details>
+    </section>
+
+    <!-- Form Section -->
+    <section class="form-section">
+      <h2>📬 Submit a Request or Concern</h2>
+      <p class="form-subtitle">
+        Whether you’re a registered user or someone listed in an uploaded contact list, we’re here to support your rights and respond to your concerns.
+      </p>
+      <p class="form-subtitle">
+        Use the form below to delete uploaded data, opt out as a non-user, or simply ask a question. Your voice matters — and we listen.
+      </p>
+
+      <form action="#" method="post">
+        <label for="name">Your Full Name <span>*</span></label>
+        <input type="text" id="name" name="name" placeholder="e.g. FirstName_SecondName" required />
+
+        <label for="email">Email Address <span>*</span></label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required />
+
+        <label for="request">Request Type <span>*</span></label>
+        <select id="request" name="request" required>
+          <option disabled selected>Select a type of request</option>
+          <option value="delete">🗑️ Delete My Uploaded Contacts</option>
+          <option value="info">📘 Request More Info About Data Use</option>
+          <option value="non-user">🚫 Remove Me from Contact Database (Non-User)</option>
+          <option value="general">✉️ General Privacy Concern or Feedback</option>
+        </select>
+
+        <label for="message">Additional Message</label>
+        <textarea id="message" name="message" rows="5" placeholder="Describe your request in detail (optional)..."></textarea>
+
+        <button type="submit" class="submit-btn">Send Request</button>
+      </form>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2025 MemoFold.</p>
+    <p class="footer-note">We don’t just connect people. We protect them. Your trust means everything to us.</p>
+  </footer>
+<script src="script.js"></script>
+</body>
+</html>

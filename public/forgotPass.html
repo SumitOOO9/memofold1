@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forgot Password - MemoFold</title>
+  <link rel="stylesheet" href="forgotPass.css" />
+</head>
+<body>
+  <div class="forgotPass-container">
+    <div class="logo">
+      <img src="logo.png" alt="MemoFold Logo" class="logo-image" />
+      <h2>MemoFold</h2>
+    </div>
+
+    <h1>Forgot your password?</h1>
+    <p class="description">Enter your email or username and we’ll send you a link to reset your password.</p>
+
+    <form id="forgot-password-form">
+      <div class="form-group">
+        <input type="text" placeholder="Email or Username" required />
+      </div>
+      <button type="submit" class="submit-btn">Send Reset Link</button>
+    </form>
+
+    <div class="back-link">
+      <a href="login.html" class="survey-btn">Back to Login</a>
+    </div>
+  </div>
+
+ <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById('forgot-password-form');
+    const input = form.querySelector('input');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const value = input.value.trim();
+
+      if (!value) {
+        alert("Please enter your email or username.");
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:3000/api/auth/request-reset", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email: value }) // Handles both email and username
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          alert(result.error || "Failed to send reset link.");
+          return;
+        }
+
+        alert("✅ A reset link has been sent to your email.");
+        input.value = "";
+      } catch (error) {
+        console.error("Reset link error:", error);
+        alert("Server error. Please try again later.");
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

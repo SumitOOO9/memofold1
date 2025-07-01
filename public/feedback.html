@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback & Report</title>
+  <link rel="stylesheet" href="style_7.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="feedback-container">
+    <h1>Share Your Feedback</h1>
+    <p class="description">We’d love to hear your thoughts or help you with any issues you’ve encountered.</p>
+
+    <form class="feedback-form">
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="Enter your name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="example@domain.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="type">What is this about?</label>
+        <select id="type" name="type" required>
+          <option value="">Choose an option</option>
+          <option value="General Feedback">General Feedback</option>
+          <option value="Report a Bug">Report a Bug</option>
+          <option value="Feature Request">Feature Request</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="message">Your Message</label>
+        <textarea id="message" name="message" rows="6" placeholder="Write your message here..." required></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn">Send Feedback</button>
+    </form>
+<div class="container-back-btn">
+  <a href="javascript:history.back()" class="back-btn">🔙 Go Back</a>
+</div>
+
+    <div class="container-survey-btn">
+      <a href="survey.html" class="survey-btn">📋 Take Our Quick Survey</a>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

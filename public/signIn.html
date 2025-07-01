@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up Page</title>
+  <link rel="stylesheet" href="style_3.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <h2>Create New Account</h2>
+    <form>
+       <label for="realname">Full Name</label>
+      <input type="text" id="realname" name="realname" required />
+      <label for="username">Username / ID</label>
+      <input type="text" id="username" name="username" required />
+
+      <label for="gmail">Gmail ID</label>
+      <input type="email" id="email" name="email" required placeholder="example@gmail.com" />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required />
+
+      <label for="confirm-password">Confirm Password</label>
+      <input type="password" id="confirm-password" name="confirm-password" required />
+
+      <button type="submit" class="btn">Sign Up</button>
+    </form>
+
+    <div class="divider">or</div>
+    <div class="email-login">
+      <p><a href="login.html">Login with Email</a></p>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+
+</html>
