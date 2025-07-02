@@ -1,4 +1,3 @@
-//server.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -20,7 +19,7 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-// ✅ Safe CORS Setup for Development
+// ✅ Safe CORS Setup
 const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -28,7 +27,7 @@ const corsOptions = {
       "http://127.0.0.1:5500",
       "http://localhost:3000",
       "http://127.0.0.1:3000",
-       "https://memofold.vercel.app"  
+      "https://memofold.vercel.app"
     ];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -40,33 +39,24 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // ✅ Important: handles OPTIONS preflight
-
-// Serve static files (HTML, CSS, JS) from the public folder
-app.use(express.static(path.join(__dirname, "public")));
-
+app.options("*", cors(corsOptions));
 
 // Middleware
 app.use(express.json());
-
-// Serve uploaded images statically
+app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Test Routes
-app.get("/", (req, res) => {
-  res.send("MemoFold Backend is live! 🌟");
-});
+// Health check
+app.get("/", (req, res) => res.send("MemoFold Backend is live! 🌟"));
+app.get("/api", (req, res) => res.send("API is working ✅"));
 
-app.get("/api", (req, res) => {
-  res.send("API is working ✅");
-});
-
-// Register Routes
+// Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/feedback", require("./routes/feedback"));
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
-// MongoDB Connection (clean, no deprecated options)
+
+// Connect DB and start server
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected successfully");
