@@ -32,14 +32,14 @@ mongoose.connect(MONGO_URI, {
 // ==============================================
 app.use(express.json());
 
-// CORS Configuration
+// ✅ CORS Configuration
 const allowedOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  https://memofold-frontend-0001.vercel.app
-
+  "https://memofold.vercel.app",
+  "https://memofold-frontend-0001.vercel.app" // ✅ Your actual deployed frontend
 ];
 
 app.use(cors({
@@ -51,7 +51,9 @@ app.use(cors({
       callback(new Error("Not allowed by CORS"));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 // Static Files
@@ -59,7 +61,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==============================================
-// 3. Route Imports (Assistant routes removed)
+// 3. Route Imports
 // ==============================================
 const authRoutes = require('./routes/auth');
 const feedbackRoutes = require('./routes/feedback');
@@ -67,7 +69,7 @@ const postRoutes = require('./routes/post');
 const userRoutes = require('./routes/userRoutes');
 
 // ==============================================
-// 4. Route Definitions (Only main app routes)
+// 4. Route Definitions
 // ==============================================
 app.use("/api/auth", authRoutes);
 app.use("/api/feedback", feedbackRoutes);
