@@ -18,17 +18,21 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-// ✅ Safe CORS Setup for Development
+// ✅ Safe CORS Setup for Development and Production
 const allowedOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
   "http://localhost:3000",
-  "http://127.0.0.1:3000"
+  "http://127.0.0.1:3000",
+  "https://memofold-coral.vercel.app"
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.warn("❌ Blocked by CORS:", origin);
@@ -41,12 +45,11 @@ app.use(cors({
 // Middleware
 app.use(express.json());
 
-// ✅ 🔥 SERVE STATIC FRONTEND FILES (Step 2 fix)
+// ✅ Serve static frontend files
 app.use(express.static(path.join(__dirname, "public"))); 
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 
 // Test Routes
 app.get("/", (req, res) => {
@@ -63,7 +66,7 @@ app.use("/api/feedback", require("./routes/feedback"));
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
 
-// MongoDB Connection (clean, no deprecated options)
+// MongoDB Connection
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -71,6 +74,11 @@ mongoose.connect(MONGO_URI, {
 .then(() => console.log("✅ MongoDB connected successfully"))
 .catch(err => {
   console.error("❌ MongoDB connection error:", err.message);
-  console.error("Full error:", err); // More detailed error
+  console.error("Full error:", err);
   process.exit(1);
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
