@@ -4,83 +4,81 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 
-// Route imports
 const authRoutes = require("./routes/auth");
 const feedbackRoutes = require("./routes/feedback");
 const postRoutes = require("./routes/post");
 const userRoutes = require("./routes/userRoutes");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// ==============================================
-// MongoDB Connection
-// ==============================================
+// Check for Mongo URI
 if (!MONGO_URI) {
   console.error("❌ MONGO_URI is not defined in the .env file");
   process.exit(1);
 }
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected successfully"))
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err.message);
-    process.exit(1);
-  });
-
-// ==============================================
-// CORS Configuration
-// ==============================================
+// ✅ Safe CORS Setup for Development and Production
 const allowedOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "https://memofold.vercel.app",
-  "https://memofold-frontend-0001.vercel.app" // ✅ added correct deployed domain
+  "https://memofold-coral.vercel.app"
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn("❌ CORS blocked origin:", origin);
+      console.warn("❌ Blocked by CORS:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true
 }));
 
-app.options("*", cors()); // Preflight support
-
-// ==============================================
 // Middleware
-// ==============================================
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+
+// ✅ Serve static frontend files
+app.use(express.static(path.join(__dirname, "public"))); 
+
+// Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ==============================================
-// Routes
-// ==============================================
-app.get("/", (req, res) => res.send("MemoFold Backend is live! 🌟"));
-app.get("/api", (req, res) => res.json({ status: "ok", version: "1.0" }));
+// Test Routes
+app.get("/", (req, res) => {
+  res.send("MemoFold Backend is live! 🌟");
+});
 
+app.get("/api", (req, res) => {
+  res.send("API is working ✅");
+});
+
+// Register Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/feedback", feedbackRoutes);
+app.use("/api/feedback", require("./routes/feedback"));
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
 
-// ==============================================
-// Start Server
-// ==============================================
+// MongoDB Connection
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("✅ MongoDB connected successfully"))
+.catch(err => {
+  console.error("❌ MongoDB connection error:", err.message);
+  console.error("Full error:", err);
+  process.exit(1);
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`
-  ==================================
-  🚀 Server Running on Port: ${PORT}
-  Environment: ${process.env.NODE_ENV || "development"}
-  ==================================
-  `);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
