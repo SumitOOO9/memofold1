@@ -42,6 +42,26 @@ app.use(cors({
   credentials: true
 }));
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    // Multer errors (file size, etc)
+    return res.status(400).json({ 
+      message: "File upload error",
+      error: err.message 
+    });
+  } else if (err) {
+    // Other errors
+    console.error(err);
+    return res.status(500).json({ 
+      message: "Internal server error",
+      error: err.message 
+    });
+  }
+  next();
+});
+
+
 // Middleware
 app.use(express.json());
 
