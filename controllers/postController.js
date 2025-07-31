@@ -1,22 +1,21 @@
-// controllers/postController.js
 const Post = require("../models/Post");
 const User = require("../models/user");
+
+// Create a new post
 exports.createPost = async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, image, createdAt } = req.body;
 
     if (!content || content.trim() === "") {
       return res.status(400).json({ error: "Post content cannot be empty" });
     }
 
-    const now = new Date();
-
     const post = new Post({
       content,
-      date: now.toLocaleDateString(),
-      time: now.toLocaleTimeString(),
+      image: image || "",
       userId: req.user.id,
-      username: req.user.username, // ✅ Add this line
+      username: req.user.username,
+      createdAt: createdAt ? new Date(createdAt) : Date.now(), // 👈 If custom date is passed, use it
     });
 
     await post.save();
@@ -28,42 +27,38 @@ exports.createPost = async (req, res) => {
 };
 
 
+// Get all posts (main feed) with user profile populated
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await Post.find({}).sort({ createdAt: -1 }).lean();
-
-    // Get all unique usernames from posts
-    const usernames = [...new Set(posts.map(post => post.username))];
-
-    // Fetch profilePics for those users
-    const users = await User.find({ username: { $in: usernames } })
-      .select("username profilePic")
+    const posts = await Post.find({})
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "userId",
+        select: "username realname profilePic",
+      })
       .lean();
 
-    // Create a map: username -> profilePic
-    const userMap = {};
-    users.forEach(user => {
-      userMap[user.username] = user.profilePic || "";
-    });
-
-    // Attach profilePic to each post
-    const enrichedPosts = posts.map(post => ({
-      ...post,
-      profilePic: userMap[post.username] || "",
-    }));
-
-    res.status(200).json(enrichedPosts);
+    res.status(200).json(posts);
   } catch (err) {
     console.error("Fetching posts failed:", err.message);
     res.status(500).json({ error: "Failed to fetch posts" });
   }
 };
 
+// Get posts created by logged-in user
 exports.getMyPosts = async (req, res) => {
   try {
-    const posts = await Post.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    const posts = await Post.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "userId",
+        select: "username realname profilePic",
+      })
+      .lean();
+
     res.status(200).json(posts);
   } catch (err) {
+    console.error("Fetching my posts failed:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 };

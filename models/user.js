@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    realname: { // ✅ Add this field
+    realname: {
       type: String,
       required: true,
       trim: true,
@@ -21,10 +21,9 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
     },
     profilePic: {
-    type: String,
-    default: "",
-    }
-
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
