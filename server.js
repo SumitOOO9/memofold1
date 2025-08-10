@@ -8,6 +8,7 @@ const authRoutes = require("./routes/auth");
 const feedbackRoutes = require("./routes/feedback");
 const postRoutes = require("./routes/post");
 const userRoutes = require("./routes/userRoutes");
+const profileRoutes = require("./routes/profileRoutes");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -85,7 +86,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/feedback", require("./routes/feedback"));
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
-
+app.use("/api/profile", profileRoutes);
 // MongoDB Connection
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,

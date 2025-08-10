@@ -29,4 +29,52 @@ router.get("/user/:username", authenticate, async (req, res) => {
   }
 });
 
+router.get('/like/:id', authenticate, async(req, res) => { 
+    let post = await postModel.findOne({ _id: req.params.id }).populate("user");;
+    if (post.likes.indexOf(req.user.userid) == -1) {
+        post.likes.push(req.user.userid);
+    }
+    else {
+        post.likes.splice(post.likes.indexOf(req.user.userid), 1);
+    }
+     await post.save();
+    res.redirect("/profile");
+});
+
+router.get('/edit/:id', authenticate, async(req, res) => { 
+    let post = await postModel.findOne({ _id: req.params.id }).populate("user");;
+    
+    res.render("edit" ,{post});
+});
+
+router.post('/update/:id', authenticate, async(req, res) => { 
+    let post = await postModel.findOneAndUpdate({_id: req.params.id} , {content: req.body.content})
+    
+    res.redirect("/profile");
+});
+
+// Show delete confirmation page
+router.get('/delete/:id', authenticate, async (req, res) => {
+    try {
+        const post = await postModel.findById(req.params.id);
+        if (!post) return res.status(404).send("Post not found");
+        res.render('delete', { post });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+});
+
+// Handle actual delete
+router.post('/delete/:id', authenticate, async (req, res) => {
+    try {
+        await postModel.findByIdAndDelete(req.params.id);
+        res.redirect('/profile');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Delete failed");
+    }
+});
+
+
 module.exports = router;
