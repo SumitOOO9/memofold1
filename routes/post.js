@@ -54,27 +54,56 @@ router.put('/update/:id', authenticate, async(req, res) => {
 });
 
 // Show delete confirmation page
+// router.delete('/delete/:id', authenticate, async (req, res) => {
+//     try {
+//         const post = await postModel.findById(req.params.id);
+//         if (!post) return res.status(500).send("Post not found");
+//         res.render('delete', { post });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).send("Server Error");
+//     }
+// });
 router.delete('/delete/:id', authenticate, async (req, res) => {
     try {
-        const post = await postModel.findById(req.params.id);
-        if (!post) return res.status(500).send("Post not found");
-        res.render('delete', { post });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Server Error");
-    }
-});
+        // 1. Check if post exists AND belongs to the user
+        const post = await postModel.findOneAndDelete({
+            _id: req.params.id,
+            userId: req.user.userid  // Ensures only the owner can delete
+        });
 
-// Handle actual delete
-router.delete('/delete/:id', authenticate, async (req, res) => {
-    try {
-        await postModel.findByIdAndDelete(req.params.id);
-        res.redirect('/profile');
+        // 2. If post doesn't exist or user doesn't own it
+        if (!post) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Post not found or no permission" 
+            });
+        }
+
+        // 3. Success response (JSON for APIs)
+        res.status(200).json({
+            success: true,
+            message: "Post deleted successfully",
+            deletedPostId: post._id
+        });
+
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Delete failed");
+        res.status(500).json({
+            success: false,
+            message: "Server error during deletion"
+        });
     }
 });
+// Handle actual delete
+// router.delete('/delete/:id', authenticate, async (req, res) => {
+//     try {
+//         await postModel.findByIdAndDelete(req.params.id);
+//         res.redirect('/profile');
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).send("Delete failed");
+//     }
+// });
 
 
 module.exports = router;
