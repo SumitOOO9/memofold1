@@ -57,7 +57,7 @@ router.put('/update/:id', authenticate, async(req, res) => {
 router.delete('/delete/:id', authenticate, async (req, res) => {
     try {
         const post = await postModel.findById(req.params.id);
-        if (!post) return res.status(404).send("Post not found");
+        if (!post) return res.status(500).send("Post not found");
         res.render('delete', { post });
     } catch (err) {
         console.error(err);
