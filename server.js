@@ -6,7 +6,7 @@ const path = require("path");
 
 const authRoutes = require("./routes/auth");
 const feedbackRoutes = require("./routes/feedback");
-const postRoutes = require("./routes/post");
+const post = require("./routes/post");
 const userRoutes = require("./routes/userRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const app = express();
@@ -84,7 +84,7 @@ app.get("/api", (req, res) => {
 // Register Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/feedback", require("./routes/feedback"));
-app.use("/api/posts", postRoutes);
+app.use("/api/posts", post);
 app.use("/api/user", userRoutes);
 app.use("/api/profile", profileRoutes);
 // MongoDB Connection
