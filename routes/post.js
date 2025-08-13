@@ -66,13 +66,11 @@ router.put('/update/:id', authenticate, async(req, res) => {
 // });
 router.delete('/delete/:id', authenticate, async (req, res) => {
     try {
-        // 1. Check if post exists AND belongs to the user
         const post = await postModel.findOneAndDelete({
             _id: req.params.id,
-            userId: req.user.userid  // Ensures only the owner can delete
+            userId: req.user.userid
         });
 
-        // 2. If post doesn't exist or user doesn't own it
         if (!post) {
             return res.status(404).json({ 
                 success: false, 
@@ -80,7 +78,6 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
             });
         }
 
-        // 3. Success response (JSON for APIs)
         res.status(200).json({
             success: true,
             message: "Post deleted successfully",
@@ -88,6 +85,7 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
         });
 
     } catch (err) {
+        console.error("Delete error:", err);
         res.status(500).json({
             success: false,
             message: "Server error during deletion"
