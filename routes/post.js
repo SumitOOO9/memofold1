@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const postController = require("../controllers/postController");
-
-// Create a new post
+const mongoose = require('mongoose');
+const Post = require('../models/Post');// Create a new post
 router.post("/", authenticate, postController.createPost);
 
 // Get all posts (main feed)
@@ -29,16 +29,34 @@ router.get("/user/:username", authenticate, async (req, res) => {
   }
 });
 
-router.post('/like/:id', authenticate, async(req, res) => { 
-    let post = await postModel.findOne({ _id: req.params.id }).populate("user");;
-    if (post.likes.indexOf(req.user.userid) == -1) {
-        post.likes.push(req.user.userid);
+router.post('/like/:id', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const post = await Post.findById(req.params.id);
+
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    // Initialize and clean the likes array
+    if (!post.likes) post.likes = [];
+    post.likes = post.likes.filter(id => id != null); // Remove any existing nulls
+
+    // Convert both IDs to string for reliable comparison
+    const likeIndex = post.likes.findIndex(id => 
+      id && id.toString() === userId.toString()
+    );
+
+    if (likeIndex === -1) {
+      post.likes.push(userId); // Only push valid user IDs
+    } else {
+      post.likes.splice(likeIndex, 1);
     }
-    else {
-        post.likes.splice(post.likes.indexOf(req.user.userid), 1);
-    }
-     await post.save();
-    res.redirect("/profile");
+
+    await post.save();
+    res.json({ success: true, likes: post.likes.filter(Boolean) }); // Final filter
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 router.get('/edit/:id', authenticate, async(req, res) => { 
@@ -68,7 +86,7 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
     try {
         const post = await postModel.findOneAndDelete({
             _id: req.params.id,
-            userId: req.user.userid
+            userId: req.user.id
         });
 
         if (!post) {
