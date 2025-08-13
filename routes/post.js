@@ -103,12 +103,12 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
 //     }
 // });
 // Simple test DELETE route - no auth, no params
-router.delete('/test-delete', (req, res) => {
-  console.log("✅ Test DELETE endpoint hit");
-  res.status(200).json({ 
-    message: "Test DELETE works!",
-    timestamp: new Date().toISOString()
-  });
-});
+// router.delete('/test-delete', (req, res) => {
+//   console.log("✅ Test DELETE endpoint hit");
+//   res.status(200).json({ 
+//     message: "Test DELETE works!",
+//     timestamp: new Date().toISOString()
+//   });
+// });
 
 module.exports = router;
