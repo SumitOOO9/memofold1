@@ -102,6 +102,13 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
 //         res.status(500).send("Delete failed");
 //     }
 // });
-
+// Simple test DELETE route - no auth, no params
+router.delete('/test-delete', (req, res) => {
+  console.log("✅ Test DELETE endpoint hit");
+  res.status(200).json({ 
+    message: "Test DELETE works!",
+    timestamp: new Date().toISOString()
+  });
+});
 
 module.exports = router;
