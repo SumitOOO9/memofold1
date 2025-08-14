@@ -84,12 +84,12 @@ router.put('/update/:id', authenticate, async(req, res) => {
 // });
 router.delete('/delete/:id', authenticate, async (req, res) => {
     try {
-        const post = await postModel.findOneAndDelete({
+        const posts = await Post.findOneAndDelete({
             _id: req.params.id,
             userId: req.user.id
         });
 
-        if (!post) {
+        if (!posts) {
             return res.status(404).json({ 
                 success: false, 
                 message: "Post not found or no permission" 
@@ -99,7 +99,7 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Post deleted successfully",
-            deletedPostId: post._id
+            deletedPostId: posts._id
         });
 
     } catch (err) {
