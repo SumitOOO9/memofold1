@@ -27,16 +27,21 @@ const profileSchema = new mongoose.Schema({
   optimisticConcurrency: true 
 });
 
-profileSchema.index({ user: 1 }, { unique: true });
-
-profileSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const userExists = await mongoose.model('User').exists({ _id: this.user });
-    if (!userExists) {
-      throw new Error('Referenced user does not exist');
+// Static method to safely update or create profile
+profileSchema.statics.updateOrCreate = async function(userId, description) {
+  return this.findOneAndUpdate(
+    { user: userId },
+    { description },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+      runValidators: true
     }
-  }
-  next();
-});
+  );
+};
 
-module.exports = mongoose.models.Profile || mongoose.model("Profile", profileSchema);
+// Create the model
+const Profile = mongoose.model('Profile', profileSchema);
+
+module.exports = Profile;

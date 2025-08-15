@@ -6,19 +6,19 @@ const { authenticate } = require("../middleware/authMiddleware");
 // GET user description
 router.get("/description", authenticate, async (req, res) => {
   try {
-    const profile = await Profile.findOneAndUpdate(
-      { user: req.user.id },  // Using .id consistently
-      { $setOnInsert: { description: "" } },
-      { 
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true
-      }
-    );
+    if (!req.user?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is missing"
+      });
+    }
+
+    const profile = await Profile.findOne({ user: req.user.id });
+    const description = profile?.description || "";
 
     res.status(200).json({
       success: true,
-      description: profile.description
+      description
     });
   } catch (err) {
     console.error("Error getting description:", err);
@@ -29,10 +29,17 @@ router.get("/description", authenticate, async (req, res) => {
   }
 });
 
-// PUT update user description
+// PUT update user description (creates if doesn't exist)
 router.put("/description", authenticate, async (req, res) => {
   try {
     const { description } = req.body;
+
+    if (!req.user?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is missing"
+      });
+    }
 
     if (typeof description !== 'string') {
       return res.status(400).json({
@@ -41,20 +48,14 @@ router.put("/description", authenticate, async (req, res) => {
       });
     }
 
-    const profile = await Profile.findOneAndUpdate(
-      { user: req.user.id },  // Using .id consistently
-      { description },
-      { 
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true,
-        runValidators: true
-      }
-    );
+    // This will create with the provided description if profile doesn't exist
+    const profile = await Profile.updateOrCreate(req.user.id, description);
 
     res.status(200).json({
       success: true,
-      message: "Description updated successfully",
+      message: profile.__v === 0 ? 
+        "Profile created with description" : 
+        "Description updated successfully",
       description: profile.description
     });
   } catch (err) {
@@ -63,6 +64,8 @@ router.put("/description", authenticate, async (req, res) => {
     let message = "Failed to update description";
     if (err.name === 'ValidationError') {
       message = Object.values(err.errors).map(val => val.message).join(', ');
+    } else if (err.code === 11000) {
+      message = "Duplicate profile detected - please try again";
     }
     
     res.status(500).json({
