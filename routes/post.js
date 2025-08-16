@@ -4,6 +4,8 @@ const { authenticate } = require("../middleware/authMiddleware");
 const postController = require("../controllers/postController");
 const mongoose = require('mongoose');
 const Post = require('../models/Post');// Create a new post
+const commentController = require("../controllers/commentController");
+const { validateComment } = require("../middleware/commentValidation");
 router.post("/", authenticate, postController.createPost);
 
 // Get all posts (main feed)
@@ -110,23 +112,31 @@ router.delete('/delete/:id', authenticate, async (req, res) => {
         });
     }
 });
-// Handle actual delete
-// router.delete('/delete/:id', authenticate, async (req, res) => {
-//     try {
-//         await postModel.findByIdAndDelete(req.params.id);
-//         res.redirect('/profile');
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).send("Delete failed");
-//     }
-// });
-// Simple test DELETE route - no auth, no params
-// router.delete('/test-delete', (req, res) => {
-//   console.log("✅ Test DELETE endpoint hit");
-//   res.status(200).json({ 
-//     message: "Test DELETE works!",
-//     timestamp: new Date().toISOString()
-//   });
-// }); 
+router.post('/:postId/comments', 
+  authenticate, 
+  validateComment, 
+  commentController.createComment
+);
+
+router.get('/:postId/comments', 
+  authenticate, 
+  commentController.getComments
+);
+
+router.post('/comments/:commentId/like', 
+  authenticate, 
+  commentController.likeComment
+);
+
+router.put('/comments/:commentId', 
+  authenticate, 
+  validateComment, 
+  commentController.updateComment
+);
+
+router.delete('/comments/:commentId', 
+  authenticate, 
+  commentController.deleteComment
+);
 
 module.exports = router;

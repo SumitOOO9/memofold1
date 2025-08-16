@@ -18,16 +18,26 @@ const postSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  likes: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-  ],
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  }],
+  comments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Comment"
+  }],
   createdAt: {
     type: Date,
     default: Date.now,
   },
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual for comment count
+postSchema.virtual('commentCount').get(function() {
+  return this.comments ? this.comments.length : 0;
 });
 
 module.exports = mongoose.model("Post", postSchema);
