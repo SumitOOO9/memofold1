@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Profile = require("../models/profile");
 const cloudinary = require("../config/cloudinary");
 
 exports.uploadProfilePic = async (req, res) => {
@@ -43,6 +44,44 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ 
       message: "User fetch failed",
       error: error.message 
+    });
+  }
+};
+
+exports.getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    // user details (without password)
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // profile description
+    const profile = await Profile.findOne({ user: userId });
+    const description = profile?.description || "";
+
+    res.status(200).json({
+      success: true,
+      user,
+      description,
+    });
+  } catch (err) {
+    console.error("Error fetching user by ID:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user data",
     });
   }
 };
