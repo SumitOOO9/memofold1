@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const { upload, cleanupTempFiles } = require("../middleware/cloudinaryUpload");
 const { uploadProfilePic, getMe } = require("../controllers/userController");
+const { getUserById } = require("../controllers/userController");
 
 router.post(
   "/upload-profile-pic",
@@ -12,5 +13,8 @@ router.post(
   uploadProfilePic
 );
 router.get("/me", authenticate, getMe);
+
+router.get("/user/:userId", authenticate, getUserById);
+
 
 module.exports = router;
