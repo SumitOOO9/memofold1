@@ -4,18 +4,19 @@ const User = require("../models/user");
 // Create a new post
 exports.createPost = async (req, res) => {
   try {
-    const { content, image, createdAt } = req.body;
+    const { content, createdAt } = req.body;
 
     if (!content || content.trim() === "") {
       return res.status(400).json({ error: "Post content cannot be empty" });
     }
+   
 
     const post = new Post({
       content,
-      image: image || "",
+      image: req.imageUrl || "",
       userId: req.user.id,
       username: req.user.username,
-      createdAt: createdAt ? new Date(createdAt) : Date.now(), // 👈 If custom date is passed, use it
+      createdAt: createdAt ? new Date(createdAt) : Date.now(), 
     });
 
     await post.save();
