@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const postController = require("../controllers/postController");
@@ -6,7 +6,17 @@ const mongoose = require('mongoose');
 const Post = require('../models/Post');// Create a new post
 const commentController = require("../controllers/commentController");
 const { validateComment } = require("../middleware/commentValidation");
-router.post("/", authenticate, postController.createPost);
+const { 
+  uploadSingle, 
+  uploadSingleToCloudinary, 
+  cleanupTempFiles,
+  handleMulterError 
+} = require("../middleware/cloudinaryUpload");
+
+
+router.post("/", authenticate, uploadSingle, // Use single image upload
+  uploadSingleToCloudinary, 
+  cleanupTempFiles, postController.createPost);
 
 // Get all posts (main feed)
 router.get("/", authenticate, postController.getPosts);
