@@ -72,15 +72,64 @@ router.post('/like/:id', authenticate, async (req, res) => {
 });
 
 router.get('/edit/:id', authenticate, async(req, res) => { 
-    let post = await postModel.findOne({ _id: req.params.id }).populate("user");;
-    
-    res.render("edit" ,{post});
+  console.log("Edit route accessed for post ID:", req.params.id);
+    try {
+    let post = await Post.findOne({ _id: req.params.id }).populate("userId");
+    // Send the post data as JSON instead of trying to render a template
+    res.json({
+      success: true,
+      message: "Post fetched successfully",
+      post: post
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching post for editing"
+    });
+  }
 });
 
-router.put('/update/:id', authenticate, async(req, res) => { 
-    let post = await postModel.findOneAndUpdate({_id: req.params.id} , {content: req.body.content})
-    
-    res.redirect("/profile");
+
+router.put('/update/:id', authenticate, async (req, res) => {
+  try {
+    console.log("Update route accessed for post ID:", req.body);
+    const { content, image } = req.body; 
+    let updateData = {
+      content: content,
+      image: image 
+    };
+
+    const updatedPost = await Post.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        userId: req.user.id 
+      },
+      updateData,
+      { new: true } 
+    );
+
+    if (!updatedPost) {
+      return res.status(403).json({
+        success: false,
+        message: "Post not found or you do not have permission to edit it."
+      });
+    }
+
+    // 5. Successfully updated
+    res.json({
+      success: true,
+      message: "Post updated successfully",
+      post: updatedPost
+    });
+
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the post."
+    });
+  }
 });
 
 // Show delete confirmation page
