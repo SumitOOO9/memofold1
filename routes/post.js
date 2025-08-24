@@ -12,6 +12,53 @@ const {
   cleanupTempFiles,
   handleMulterError 
 } = require("../middleware/cloudinaryUpload");
+const fs = require('fs');
+const path = require('path');
+
+
+
+const processBase64Image = (base64String, userId) => {
+  if (!base64String || !base64String.startsWith('data:image/')) {
+    return null;
+  }
+
+  try {
+    // Extract image type and data
+    const matches = base64String.match(/^data:image\/([A-Za-z-+/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return null;
+    }
+
+    const imageType = matches[1];
+    const imageData = matches[2];
+    
+    // Validate image type
+    const validImageTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+    if (!validImageTypes.includes(imageType.toLowerCase())) {
+      return null;
+    }
+
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Generate unique filename
+    const filename = `post_${userId}_${Date.now()}.${imageType}`;
+    const filePath = path.join(uploadsDir, filename);
+
+    // Save the image
+    fs.writeFileSync(filePath, imageData, 'base64');
+
+    // Return the relative path or URL (adjust based on your setup)
+    return `/uploads/${filename}`;
+
+  } catch (error) {
+    console.error('Error processing base64 image:', error);
+    return null;
+  }
+};
 
 
 router.post("/", authenticate, uploadSingle, // Use single image upload
@@ -94,11 +141,30 @@ router.get('/edit/:id', authenticate, async(req, res) => {
 router.put('/update/:id', authenticate, async (req, res) => {
   try {
     console.log("Update route accessed for post ID:", req.body);
-    const { content, image } = req.body; 
-    let updateData = {
-      content: content,
-      image: image 
-    };
+    const { content, image: base64Image } = req.body; 
+    
+    let updateData = { content };
+
+    // Process base64 image if provided
+    if (base64Image) {
+      if (base64Image === 'remove') {
+        // Handle image removal case
+        updateData.image = "";
+      } else if (base64Image.startsWith('data:image/')) {
+        const imageUrl = processBase64Image(base64Image, req.user.id);
+        if (!imageUrl) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid image format"
+          });
+        }
+        updateData.image = imageUrl;
+      } else {
+        // If it's already a URL or empty string, keep it as is
+        updateData.image = base64Image;
+      }
+    }
+
 
     const updatedPost = await Post.findOneAndUpdate(
       {
