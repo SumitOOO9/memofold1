@@ -3,7 +3,7 @@ const User = require("../models/user");
 const fs = require('fs');
 const path = require('path');
 
-const processBase64Image = (base64String, userId) => {
+const processBase64Image = async (base64String, userId) => {
   if (!base64String || !base64String.startsWith('data:image/')) {
     return null;
   }
@@ -24,24 +24,21 @@ const processBase64Image = (base64String, userId) => {
       return null;
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(
+      `data:image/${imageType};base64,${imageData}`,
+      {
+        folder: 'posts', // Optional: organize images in folders
+        public_id: `post_${userId}_${Date.now()}`,
+        resource_type: 'image'
+      }
+    );
 
-    // Generate unique filename
-    const filename = `post_${userId}_${Date.now()}.${imageType}`;
-    const filePath = path.join(uploadsDir, filename);
-
-    // Save the image
-    fs.writeFileSync(filePath, imageData, 'base64');
-
-    // Return the relative path or URL (adjust based on your setup)
-    return `/uploads/${filename}`;
+    // Return Cloudinary URL
+    return result.secure_url; // or result.url for non-HTTPS
 
   } catch (error) {
-    console.error('Error processing base64 image:', error);
+    console.error('Error uploading to Cloudinary:', error);
     return null;
   }
 };
