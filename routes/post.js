@@ -14,7 +14,7 @@ const {
 } = require("../middleware/cloudinaryUpload");
 const fs = require('fs');
 const path = require('path');
-
+const cloudinary = require("../config/cloudinary");
 
 
 const processBase64Image = async (base64String, userId) => {
