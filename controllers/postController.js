@@ -2,7 +2,7 @@ const Post = require("../models/Post");
 const User = require("../models/user");
 const fs = require('fs');
 const path = require('path');
-
+const cloudinary = require("../config/cloudinary");
 const processBase64Image = async (base64String, userId) => {
   if (!base64String || !base64String.startsWith('data:image/')) {
     return null;
@@ -56,7 +56,7 @@ exports.createPost = async (req, res) => {
     
     // Process base64 image if provided
     if (base64Image && base64Image.startsWith('data:image/')) {
-      imageUrl = processBase64Image(base64Image, req.user.id);
+      imageUrl = await processBase64Image(base64Image, req.user.id);
       if (!imageUrl) {
         return res.status(400).json({ error: "Invalid image format" });
       }
