@@ -148,7 +148,7 @@ router.put('/update/:id', authenticate, async (req, res) => {
         // Handle image removal case
         updateData.image = "";
       } else if (base64Image.startsWith('data:image/')) {
-        const imageUrl = processBase64Image(base64Image, req.user.id);
+        const imageUrl = await processBase64Image(base64Image, req.user.id);
         if (!imageUrl) {
           return res.status(400).json({
             success: false,
