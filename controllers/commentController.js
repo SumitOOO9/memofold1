@@ -173,16 +173,25 @@ exports.deleteComment = async (req, res) => {
     const { commentId } = req.params;
     const userId = req.user.id;
 
-    const comment = await Comment.findOneAndDelete({
-      _id: commentId,
-      userId
-    });
-
+    // Get the comment
+    const comment = await Comment.findById(commentId);
     if (!comment) {
-      return res.status(404).json({ 
-        error: 'Comment not found or no permission to delete' 
-      });
+      return res.status(404).json({ error: "Comment not found" });
     }
+
+    // Get the post of that comment
+    const post = await Post.findById(comment.postId);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    // Permission check: comment owner OR post owner
+    if (comment.userId.toString() !== userId && post.userId.toString() !== userId) {
+      return res.status(403).json({ error: "No permission to delete this comment" });
+    }
+
+    // Delete the comment
+    await Comment.findByIdAndDelete(commentId);
 
     // Remove comment reference from post
     await Post.updateOne(
@@ -203,11 +212,11 @@ exports.deleteComment = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Comment deleted successfully'
+      message: "Comment deleted successfully",
     });
 
   } catch (error) {
-    console.error('Error deleting comment:', error);
-    res.status(500).json({ error: 'Failed to delete comment' });
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ error: "Failed to delete comment" });
   }
 };
