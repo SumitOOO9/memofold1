@@ -1,49 +1,5 @@
-const Post = require("../models/Post");
-const User = require("../models/user");
-const fs = require('fs');
-const path = require('path');
-const cloudinary = require("../config/cloudinary");
-const processBase64Image = async (base64String, userId) => {
-  if (!base64String || !base64String.startsWith('data:image/')) {
-    return null;
-  }
+const PostService = require('../service/postService');
 
-  try {
-    // Extract image type and data
-    const matches = base64String.match(/^data:image\/([A-Za-z-+/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      return null;
-    }
-
-    const imageType = matches[1];
-    const imageData = matches[2];
-    
-    // Validate image type
-    const validImageTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
-    if (!validImageTypes.includes(imageType.toLowerCase())) {
-      return null;
-    }
-
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(
-      `data:image/${imageType};base64,${imageData}`,
-      {
-        folder: 'posts', // Optional: organize images in folders
-        public_id: `post_${userId}_${Date.now()}`,
-        resource_type: 'image'
-      }
-    );
-
-    // Return Cloudinary URL
-    return result.secure_url; // or result.url for non-HTTPS
-
-  } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
-    return null;
-  }
-};
-
-// Create a new post
 exports.createPost = async (req, res) => {
   try {
     const { content, createdAt, image: base64Image } = req.body;
@@ -51,45 +7,30 @@ exports.createPost = async (req, res) => {
     if (!content || content.trim() === "") {
       return res.status(400).json({ error: "Post content cannot be empty" });
     }
-   
-     let imageUrl = "";
-    
-    // Process base64 image if provided
-    if (base64Image && base64Image.startsWith('data:image/')) {
-      imageUrl = await processBase64Image(base64Image, req.user.id);
-      if (!imageUrl) {
-        return res.status(400).json({ error: "Invalid image format" });
-      }
-    }
 
-    const post = new Post({
-      content,
-      image: imageUrl || "",
-      userId: req.user.id,
-      username: req.user.username,
-      createdAt: createdAt ? new Date(createdAt) : Date.now(), 
-    });
+    const post = await PostService.createPost(
+      req.user.id, 
+      req.user.username, 
+      content, 
+      base64Image, 
+      createdAt
+    );
 
-    await post.save();
     res.status(201).json({ message: "Post created successfully", post });
   } catch (err) {
     console.error("Post creation error:", err.message);
+    
+    if (err.message === "Invalid image format") {
+      return res.status(400).json({ error: err.message });
+    }
+    
     res.status(500).json({ error: "Server error while creating post" });
   }
 };
 
-
-// Get all posts (main feed) with user profile populated
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await Post.find({})
-      .sort({ createdAt: -1 })
-      .populate({
-        path: "userId",
-        select: "username realname profilePic",
-      })
-      .lean();
-
+    const posts = await PostService.getAllPosts();
     res.status(200).json(posts);
   } catch (err) {
     console.error("Fetching posts failed:", err.message);
@@ -97,20 +38,138 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-// Get posts created by logged-in user
 exports.getMyPosts = async (req, res) => {
   try {
-    const posts = await Post.find({ userId: req.user.id })
-      .sort({ createdAt: -1 })
-      .populate({
-        path: "userId",
-        select: "username realname profilePic",
-      })
-      .lean();
-
+    const posts = await PostService.getUserPosts(req.user.id);
     res.status(200).json(posts);
   } catch (err) {
     console.error("Fetching my posts failed:", err.message);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.likePost = async (req, res) => {
+  try {
+    const post = await PostService.likePost(req.params.id, req.user.id);
+
+    res.json({ success: true, likes: post.likes });
+  } catch (err) {
+    console.error('Like error:', err);
+
+    if (err.message === "Post not found" || err.message === "User not found") {
+      return res.status(404).json({ error: err.message });
+    }
+
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+exports.getPostForEdit = async (req, res) => {
+  try {
+    const post = await PostService.getPostById(req.params.id);
+    
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Post fetched successfully",
+      post: post
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching post for editing"
+    });
+  }
+};
+
+exports.updatePost = async (req, res) => {
+  try {
+    const { content, image: base64Image } = req.body;
+    let updateData = { content };
+
+    if (base64Image) {
+      if (base64Image === 'remove') {
+        updateData.image = "";
+      } else if (base64Image.startsWith('data:image/')) {
+        const imageUrl = await UploadService.processBase64Image(base64Image, req.user.id);
+        if (!imageUrl) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid image format"
+          });
+        }
+        updateData.image = imageUrl;
+      } else {
+        updateData.image = base64Image;
+      }
+    }
+
+    const updatedPost = await PostService.updatePost(
+      req.params.id,
+      req.user.id,
+      updateData
+    );
+
+    if (!updatedPost) {
+      return res.status(403).json({
+        success: false,
+        message: "Post not found or you do not have permission to edit it."
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Post updated successfully",
+      post: updatedPost
+    });
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the post."
+    });
+  }
+};
+
+exports.deletePost = async (req, res) => {
+  try {
+    const deletedPost = await PostService.deletePost(req.params.id, req.user.id);
+
+    if (!deletedPost) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found or no permission" 
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Post deleted successfully",
+      deletedPostId: deletedPost._id
+    });
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error during deletion"
+    });
+  }
+};
+
+exports.getPostsByUsername = async (req, res) => {
+  try {
+    const posts = await PostService.getPostsByUsername(req.params.username);
+    res.status(200).json(posts);
+  } catch (err) {
+    console.error("Failed to fetch user's posts:", err.message);
+    res.status(500).json({ error: "Failed to fetch user's posts" });
   }
 };
