@@ -5,7 +5,7 @@ const validateMiddleware = require("../middleware/validateMiddleware");
 const { registerValidation, loginValidation } = require("../validation/userValidation");
 
 // User authentication
-// router.post("/register", validateMiddleware(re), authController.register);
+router.post("/register", validateMiddleware(registerValidation), authController.register);
 router.post("/signup", validateMiddleware(registerValidation), authController.register);
 router.post("/login", validateMiddleware(loginValidation), authController.login);
 
