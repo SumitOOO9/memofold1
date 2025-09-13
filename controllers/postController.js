@@ -31,8 +31,13 @@ exports.createPost = async (req, res) => {
 exports.getPosts = async (req, res) => {
   try {
     const posts = await PostService.getAllPosts();
-    res.status(200).json(posts);
-  } catch (err) {
+    const postsWithCounts = posts.map(post => ({
+      ...post,
+      commentCount: post.comments?.length || 0
+    }));
+
+    res.status(200).json({ success: true, posts: postsWithCounts });
+    } catch (err) {
     console.error("Fetching posts failed:", err.message);
     res.status(500).json({ error: "Failed to fetch posts" });
   }
@@ -41,8 +46,13 @@ exports.getPosts = async (req, res) => {
 exports.getMyPosts = async (req, res) => {
   try {
     const posts = await PostService.getUserPosts(req.user.id);
-    res.status(200).json(posts);
-  } catch (err) {
+    const postsWithCounts = posts.map(post => ({
+      ...post,
+      commentCount: post.comments?.length || 0
+    }));
+
+    res.status(200).json({ success: true, posts: postsWithCounts });
+    } catch (err) {
     console.error("Fetching my posts failed:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -149,6 +159,7 @@ exports.deletePost = async (req, res) => {
         message: "Post not found or no permission" 
       });
     }
+  await Comment.deleteMany({ postId: deletedPost._id });
 
     res.status(200).json({
       success: true,
@@ -166,8 +177,15 @@ exports.deletePost = async (req, res) => {
 
 exports.getPostsByUsername = async (req, res) => {
   try {
+    console.log("Fetching posts for user:", req.params.username);
     const posts = await PostService.getPostsByUsername(req.params.username);
-    res.status(200).json(posts);
+    console.log(`Found ${posts.length} posts for user ${req.params.username}`);
+        const postsWithCounts = posts.map(post => ({
+      ...post,
+      commentCount: post.comments?.length || 0
+    }));
+
+    res.status(200).json({ success: true, posts: postsWithCounts });
   } catch (err) {
     console.error("Failed to fetch user's posts:", err.message);
     res.status(500).json({ error: "Failed to fetch user's posts" });

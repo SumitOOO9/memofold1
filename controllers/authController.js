@@ -10,7 +10,7 @@ exports.register = async (req, res) => {
 
     const existingUser = await User.findOne({
       $or: [
-        { username: username.trim().toLowerCase() },
+        { username: username.trim() },
         { email: email.trim().toLowerCase() },
       ],
     });
@@ -21,7 +21,7 @@ exports.register = async (req, res) => {
 
     const newUser = new User({
       realname: realname.trim(),
-      username: username.trim().toLowerCase(),
+      username: username.trim(),
       email: email.trim().toLowerCase(),
       password,        
       profilePic: profilePic || "",

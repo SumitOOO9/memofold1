@@ -1,54 +1,20 @@
 const mongoose = require('mongoose');
 
 const commentSchema = new mongoose.Schema({
-  content: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 1000
-  },
-  postId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Post',
-    required: true
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  likes: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  replies: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Comment'
-  }],
-  parentComment: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Comment'
-  },
-  isEdited: {
-    type: Boolean,
-    default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  content: { type: String, required: true, trim: true, maxlength: 1000 },
+  postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  parentComment: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null },
+}, {
+  timestamps: true, 
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Add indexes for better performance
-commentSchema.index({ postId: 1 });
+commentSchema.index({ postId: 1, createdAt: -1 });
 commentSchema.index({ userId: 1 });
-commentSchema.index({ createdAt: -1 });
 
-// Virtual for getting the comment author's profile
 commentSchema.virtual('author', {
   ref: 'User',
   localField: 'userId',
@@ -56,15 +22,12 @@ commentSchema.virtual('author', {
   justOne: true
 });
 
-// Middleware to update the updatedAt field
-commentSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  if (this.isModified('content')) {
-    this.isEdited = true;
-  }
-  next();
+commentSchema.virtual('repliesCount', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'parentComment',
+  count: true
 });
 
 const Comment = mongoose.model('Comment', commentSchema);
-
 module.exports = Comment;

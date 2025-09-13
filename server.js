@@ -41,7 +41,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
-app.use("/api/profile", profileRoutes);
+// app.use("/api/profile", profileRoutes);
 
 
 app.use((err, req, res, next) => {

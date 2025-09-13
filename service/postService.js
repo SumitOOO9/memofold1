@@ -23,11 +23,39 @@ class PostService {
     return await post.save();
   }
 
+   static _populateComments() {
+    return {
+      path: 'comments',
+      match: { parentComment: null },
+      options: { sort: { createdAt: -1 } },
+      populate: [
+        { path: 'userId', select: 'username realname profilePic' },
+        { 
+          path: 'likes',
+          populate: { path: 'userId', select: 'username realname profilePic' }
+        },
+        {
+          path: 'replies',
+          options: { sort: { createdAt: -1 }, limit: 3 },
+          populate: [
+            { path: 'userId', select: 'username realname profilePic' },
+            { 
+              path: 'likes',
+              populate: { path: 'userId', select: 'username realname profilePic' }
+            }
+          ]
+        }
+      ]
+    };
+  }
+
 static async getAllPosts() {
   return await Post.find({})
     .sort({ createdAt: -1 })
     .populate("userId", "username realname profilePic")
     .populate("likes.userId", "username realname profilePic")
+    .populate(this._populateComments())
+
     .lean();
 }
 
@@ -36,6 +64,8 @@ static async getUserPosts(userId) {
     .sort({ createdAt: -1 })
     .populate("userId", "username realname profilePic")
     .populate("likes.userId", "username realname profilePic")
+    .populate(this._populateComments())
+
     .lean();
 }
 
@@ -44,6 +74,7 @@ static async getPostsByUsername(username) {
     .sort({ createdAt: -1 })
     .populate("userId", "username realname profilePic")
     .populate("likes.userId", "username realname profilePic")
+    .populate(this._populateComments())
     .lean();
 }
 
@@ -70,7 +101,10 @@ static async likePost(postId, userId) {
 
 
   static async getPostById(postId) {
-    return await Post.findById(postId).populate("userId");
+    return await Post.findById(postId) .populate("userId", "username realname profilePic")
+      .populate("likes.userId", "username realname profilePic")
+      .populate(this._populateComments())
+      .lean();
   }
 
   static async updatePost(postId, userId, updateData) {

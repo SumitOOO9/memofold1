@@ -2,8 +2,12 @@ const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const {  uploadSingleToCloudinary, uploadSingle } = require("../middleware/uploadMiddleware");
-const { uploadProfilePic, getMe,  } = require("../controllers/userController");
-const { getUserById } = require("../controllers/userController");
+const { 
+  uploadProfilePic, 
+  getMe, 
+  getUserById, 
+  updateUserAndProfile 
+} = require("../controllers/userController");
 
 router.post(
   "/upload-profile-pic",
@@ -15,6 +19,8 @@ router.post(
 router.get("/me", authenticate, getMe);
 
 router.get("/user/:userId", authenticate, getUserById);
+router.put("/update", authenticate, updateUserAndProfile);
+
 
 
 module.exports = router;

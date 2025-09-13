@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const postController = require("../controllers/postController");
 const commentController = require("../controllers/commentController");
-const { validateComment } = require("../middleware/commentValidation");
+const { validateComment, validateCommentUpdate } = require("../validation/commentValidation");
 const { 
   uploadSingle, 
   uploadSingleToCloudinary, 
@@ -14,7 +14,6 @@ const {
 router.post("/", 
   authenticate, 
   uploadSingle, 
-  handleMulterError,
   uploadSingleToCloudinary, 
   postController.createPost
 );
@@ -48,7 +47,7 @@ router.post('/comments/:commentId/like',
 
 router.put('/comments/:commentId', 
   authenticate, 
-  validateComment, 
+  validateCommentUpdate, 
   commentController.updateComment
 );
 
@@ -57,6 +56,6 @@ router.delete('/comments/:commentId',
   commentController.deleteComment
 );
 
-router.use(handleMulterError);
+// router.use(handleMulterError);
 
 module.exports = router;
