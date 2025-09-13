@@ -2,7 +2,7 @@
 const helmet = require('helmet');
 // const mongoSanitize = require('express-mongo-sanitize');
 // const xss = require('xss-clean');
-const rateLimit = require('express-rate-limit');
+// const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 
 const allowedOrigins = [
@@ -22,13 +22,13 @@ function securityMiddleware(app) {
 
 //   app.use(xss());
 
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use(limiter);
+  // const limiter = rateLimit({
+  //   windowMs: 15 * 60 * 1000,
+  //   max: 200,
+  //   standardHeaders: true,
+  //   legacyHeaders: false,
+  // });
+  // app.use(limiter);
 
   app.use(
     cors({
