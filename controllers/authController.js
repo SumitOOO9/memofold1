@@ -3,7 +3,6 @@ const jwt = require("jsonwebtoken");
 const { sendVerificationCode } = require("../service/sendEmail");
 const passwordReset = require("../models/passwordReset");
 
-// 🟢 Register Controller
 exports.register = async (req, res) => {
   try {
     const { realname, username, email, password, profilePic } = req.body;
@@ -28,9 +27,20 @@ exports.register = async (req, res) => {
     });
 
     await newUser.save();
+        if (!process.env.JWT_SECRET) {
+      console.error("❌ JWT_SECRET is missing in environment.");
+      return res.status(500).json({ message: "Server misconfiguration." });
+    }
+
+    const token = jwt.sign(
+      { id: newUser._id, username: newUser.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     return res.status(201).json({
       message: "User registered successfully.",
+      token,
       user: {
         id: newUser._id,
         username: newUser.username,
