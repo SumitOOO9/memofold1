@@ -50,6 +50,8 @@ class PostService {
     const posts = await Post.find({})
       .sort({ createdAt: -1 })
       .populate('userId', 'username realname profilePic')
+        .populate('likes.userId', 'username realname profilePic')
+
       .lean();
 
     // Attach comments
@@ -65,6 +67,8 @@ class PostService {
     const posts = await Post.find({ userId })
       .sort({ createdAt: -1 })
       .populate('userId', 'username realname profilePic')
+        .populate('likes.userId', 'username realname profilePic')
+
       .lean();
 
     for (let post of posts) {
@@ -79,6 +83,8 @@ class PostService {
     const posts = await Post.find({ username })
       .sort({ createdAt: -1 })
       .populate('userId', 'username realname profilePic')
+        .populate('likes.userId', 'username realname profilePic')
+
       .lean();
 
     for (let post of posts) {
@@ -103,6 +109,8 @@ class PostService {
   static async getPostById(postId) {
     const post = await Post.findById(postId)
       .populate('userId', 'username realname profilePic')
+        .populate('likes.userId', 'username realname profilePic')
+
       .lean();
 
     if (post) post.comments = await PostService.populateComments(post._id);
