@@ -1,12 +1,13 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
-
+const swaggerUi = require("swagger-ui-express");
+const swaggerFile = require('./swagger-output.json');
 const authRoutes = require("./routes/auth");
 const feedbackRoutes = require("./routes/feedback");
 const postRoutes = require("./routes/post");
 const userRoutes = require("./routes/userRoutes");
-const profileRoutes = require("./routes/profileRoutes");
+// const profileRoutes = require("./routes/profileRoutes");
 
 const connectDb = require("./config/db");
 const securityMiddleware = require("./middleware/security");
@@ -42,6 +43,8 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
 // app.use("/api/profile", profileRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
+
 
 
 app.use((err, req, res, next) => {
@@ -62,4 +65,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+
 });
