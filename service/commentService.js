@@ -48,6 +48,9 @@ static async populateReplies(comment) {
       .lean();
   }
 
+  // If comment's user is deleted, skip this comment
+  if (!comment.userId) return null;
+
   // Fetch all replies dynamically
   const replies = await Comment.find({ parentComment: comment._id })
     .sort('-createdAt')
@@ -56,7 +59,8 @@ static async populateReplies(comment) {
 
   comment.replies = [];
   for (let reply of replies) {
-    comment.replies.push(await CommentService.populateReplies(reply));
+    const populatedReply = await CommentService.populateReplies(reply);
+    if (populatedReply) comment.replies.push(populatedReply); // only push if user exists
   }
 
   return comment;
@@ -72,11 +76,13 @@ static async getComments({ postId, limit = 20, skip = 0, sort = '-createdAt' }) 
 
   const populatedComments = [];
   for (let comment of comments) {
-    populatedComments.push(await CommentService.populateReplies(comment));
+    const populated = await CommentService.populateReplies(comment);
+    if (populated) populatedComments.push(populated); // only include if user exists
   }
 
   return populatedComments;
 }
+
 
 
 

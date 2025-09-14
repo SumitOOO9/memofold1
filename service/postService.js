@@ -84,26 +84,41 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
 
 
 static async getPostLikes(postId, limit = 20, cursor = null) {
-  const post = await Post.findById(postId)
-    .populate('likes.userId', 'username profilePic')
-    .lean();
-
+  const post = await Post.findById(postId).lean();
   if (!post) throw new Error("Post not found");
 
-  let likes = [...post.likes].sort((a, b) => {
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  }).map(l => l.userId);
-
-  if (cursor) {
-    const cursorIndex = likes.findIndex(u => u._id.toString() === cursor);
-    if (cursorIndex >= 0) likes = likes.slice(cursorIndex + 1);
+  if (!post.likes || post.likes.length === 0) {
+    return { data: [], nextCursor: null };
   }
 
-  const sliced = likes.slice(0, limit);
-  const nextCursor = sliced.length > 0 ? sliced[sliced.length - 1]._id : null;
+  // Sort likes by newest first
+  let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  return { data: sliced, nextCursor };
+  // Filter out deleted users
+  const userIds = sortedLikes.map(l => l.userId);
+  const existingUsers = await User.find({ _id: { $in: userIds } }).select('username profilePic');
+  sortedLikes = sortedLikes.filter(l => existingUsers.some(u => u._id.toString() === l.userId.toString()));
+
+  // Apply cursor pagination
+  if (cursor) {
+    const cursorIndex = sortedLikes.findIndex(l => l.userId.toString() === cursor);
+    if (cursorIndex >= 0) sortedLikes = sortedLikes.slice(cursorIndex + 1);
+  }
+
+  // Slice for limit
+  const sliced = sortedLikes.slice(0, limit);
+
+  // Map to user info
+  const data = sliced.map(like => {
+    const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
+    return { username: user.username, profilePic: user.profilePic };
+  });
+
+  const nextCursor = sliced.length > 0 ? sliced[sliced.length - 1].userId : null;
+
+  return { data, nextCursor };
 }
+
 
 
   static async likePost(postId, userId) {
@@ -143,28 +158,30 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
   }
 static async _populateLikesAndComments(posts) {
   for (let post of posts) {
+    // Total likes
+    post.likesCount = post.likes?.length || 0;
+
     if (post.likes && post.likes.length > 0) {
-      const latestLikes = post.likes.slice(-2).reverse();
+      // Sort likes by newest first
+      let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      const userIds = latestLikes.map(like => like.userId);
-      console.log(userIds);
-      const users = await User.find({ _id: { $in: userIds } }).select('username profilePic');
+      // Get unique user IDs
+      const userIds = sortedLikes.map(l => l.userId);
+      const existingUsers = await User.find({ _id: { $in: userIds } }).select('username profilePic');
 
-      const validLikes = latestLikes.filter(like => 
-        users.some(u => u._id.toString() === like.userId.toString())
-      );
+      // Filter out likes from deleted users
+      sortedLikes = sortedLikes.filter(like => existingUsers.some(u => u._id.toString() === like.userId.toString()));
 
-      post.likesPreview = validLikes.map(like => {
-        const user = users.find(u => u._id.toString() === like.userId.toString());
+      // Take latest 2 likes
+      const latestLikes = sortedLikes.slice(0, 2);
+
+      // Map to username & profilePic
+      post.likesPreview = latestLikes.map(like => {
+        const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
         return { username: user.username, profilePic: user.profilePic };
       });
-
-      // Update likesCount to only include existing users
-      post.likesCount = validLikes.length;
-      console.log(post.likesCount);
     } else {
       post.likesPreview = [];
-      post.likesCount = 0;
     }
 
     // Comment count
@@ -176,6 +193,7 @@ static async _populateLikesAndComments(posts) {
 
   return posts;
 }
+
 
 
 
