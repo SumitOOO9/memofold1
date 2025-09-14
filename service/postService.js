@@ -91,24 +91,19 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
     return { data: [], nextCursor: null };
   }
 
-  // Sort likes by newest first
   let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // Filter out deleted users
   const userIds = sortedLikes.map(l => l.userId);
   const existingUsers = await User.find({ _id: { $in: userIds } }).select('username profilePic');
   sortedLikes = sortedLikes.filter(l => existingUsers.some(u => u._id.toString() === l.userId.toString()));
 
-  // Apply cursor pagination
   if (cursor) {
     const cursorIndex = sortedLikes.findIndex(l => l.userId.toString() === cursor);
     if (cursorIndex >= 0) sortedLikes = sortedLikes.slice(cursorIndex + 1);
   }
 
-  // Slice for limit
   const sliced = sortedLikes.slice(0, limit);
 
-  // Map to user info
   const data = sliced.map(like => {
     const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
     return { username: user.username, profilePic: user.profilePic };
@@ -158,24 +153,18 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
   }
 static async _populateLikesAndComments(posts) {
   for (let post of posts) {
-    // Total likes
     post.likesCount = post.likes?.length || 0;
 
     if (post.likes && post.likes.length > 0) {
-      // Sort likes by newest first
       let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      // Get unique user IDs
       const userIds = sortedLikes.map(l => l.userId);
       const existingUsers = await User.find({ _id: { $in: userIds } }).select('username profilePic');
 
-      // Filter out likes from deleted users
       sortedLikes = sortedLikes.filter(like => existingUsers.some(u => u._id.toString() === like.userId.toString()));
 
-      // Take latest 2 likes
       const latestLikes = sortedLikes.slice(0, 2);
 
-      // Map to username & profilePic
       post.likesPreview = latestLikes.map(like => {
         const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
         return { username: user.username, profilePic: user.profilePic };
@@ -184,10 +173,8 @@ static async _populateLikesAndComments(posts) {
       post.likesPreview = [];
     }
 
-    // Comment count
     post.commentCount = await Comment.countDocuments({ postId: post._id });
 
-    // Remove original likes array
     delete post.likes;
   }
 

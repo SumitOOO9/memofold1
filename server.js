@@ -1,5 +1,7 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const swaggerFile = require('./swagger-output.json');
@@ -7,12 +9,23 @@ const authRoutes = require("./routes/auth");
 const feedbackRoutes = require("./routes/feedback");
 const postRoutes = require("./routes/post");
 const userRoutes = require("./routes/userRoutes");
+const friendRoutes = require("./routes/friendRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 // const profileRoutes = require("./routes/profileRoutes");
 
 const connectDb = require("./config/db");
 const securityMiddleware = require("./middleware/security");
 
 const app = express();
+
+const server = http.createServer(app);  
+const io = new Server(server, {
+  cors: {
+    origin: "*",   
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 connectDb();
@@ -42,6 +55,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/friends", friendRoutes)
+app.use("/api/notifications", notificationRoutes);
 // app.use("/api/profile", profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
@@ -62,6 +77,27 @@ app.use((err, req, res, next) => {
     error: err.message,
   });
 });
+
+io.on("connection", (socket) => {
+  console.log("⚡ New client connected:", socket.id);
+
+  // join room per user (for private notifications)
+  socket.on("join", (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined their room`);
+  });
+
+  // send notification
+  socket.on("sendNotification", ({ receiverId, message }) => {
+    io.to(receiverId).emit("notification", { message });
+    console.log(`📨 Sent notification to ${receiverId}: ${message}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
+});
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
