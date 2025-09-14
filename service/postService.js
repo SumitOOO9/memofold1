@@ -141,32 +141,45 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
   static async deletePost(postId, userId) {
     return await Post.findOneAndDelete({ _id: postId, userId });
   }
- static async _populateLikesAndComments(posts) {
+static async _populateLikesAndComments(posts) {
   for (let post of posts) {
-    // 1️⃣ Total likes count
-    post.likesCount = post.likes?.length || 0;
+    if (post.likes && post.likes.length > 0) {
+      const latestLikes = post.likes.slice(-2).reverse();
 
-    // 2️⃣ Latest 2 likes preview
-    const latestLikes = post.likes?.slice(-2).reverse() || [];
+      const userIds = latestLikes.map(like => like.userId);
+      console.log(userIds);
+      const users = await User.find({ _id: { $in: userIds } }).select('username profilePic');
 
-    const userIds = latestLikes.map(l => l.userId);
-    const users = await User.find({ _id: { $in: userIds } })
-      .select('username profilePic');
+      const validLikes = latestLikes.filter(like => 
+        users.some(u => u._id.toString() === like.userId.toString())
+      );
 
-    post.likesPreview = userIds.map(id => {
-      const user = users.find(u => u._id.toString() === id.toString());
-      return user ? { username: user.username, profilePic: user.profilePic } : null;
-    }).filter(Boolean);
+      post.likesPreview = validLikes.map(like => {
+        const user = users.find(u => u._id.toString() === like.userId.toString());
+        return { username: user.username, profilePic: user.profilePic };
+      });
 
-    // 3️⃣ Comment count
+      // Update likesCount to only include existing users
+      post.likesCount = validLikes.length;
+      console.log(post.likesCount);
+    } else {
+      post.likesPreview = [];
+      post.likesCount = 0;
+    }
+
+    // Comment count
     post.commentCount = await Comment.countDocuments({ postId: post._id });
 
-    // 4️⃣ Remove original likes array from response
+    // Remove original likes array
     delete post.likes;
   }
 
   return posts;
 }
+
+
+
+
 
 }
 
