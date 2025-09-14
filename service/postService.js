@@ -1,5 +1,6 @@
 const Post = require('../models/Post');
 const Comment = require('../models/comment');
+const User = require('../models/user');
 const UploadService = require('./uploadService');
 
 class PostService {
@@ -44,8 +45,7 @@ class PostService {
 
   //   return roots;
   // }
-
- static async getAllPosts(limit = 10, cursor = null) {
+  static async getAllPosts(limit = 10, cursor = null) {
     const query = cursor ? { _id: { $lt: cursor } } : {};
 
     const posts = await Post.find(query)
@@ -54,25 +54,9 @@ class PostService {
       .populate('userId', 'username realname profilePic')
       .lean();
 
-    for (let post of posts) {
-      const populatedPost = await Post.findById(post._id)
-        .populate({
-          path: 'likes.userId',
-          select: 'username profilePic',
-          options: { sort: { createdAt: -1 }, limit: 2 }
-        })
-        .lean();
-
-      post.likesPreview = populatedPost.likes.map(l => l.userId);
-      post.likesCount = post.likes?.length || 0;
-
-      post.commentCount = await Comment.countDocuments({ postId: post._id });
-    }
-
-    return posts;
+    return await PostService._populateLikesAndComments(posts);
   }
-
-  static async getUserPosts(userId, limit = 10, cursor = null) {
+static async getUserPosts(userId, limit = 10, cursor = null) {
     const query = { userId };
     if (cursor) query._id = { $lt: cursor };
 
@@ -82,21 +66,7 @@ class PostService {
       .populate('userId', 'username realname profilePic')
       .lean();
 
-    for (let post of posts) {
-      const populatedPost = await Post.findById(post._id)
-        .populate({
-          path: 'likes.userId',
-          select: 'username profilePic',
-          options: { sort: { createdAt: -1 }, limit: 2 }
-        })
-        .lean();
-
-      post.likesPreview = populatedPost.likes.map(l => l.userId);
-      post.likesCount = post.likes?.length || 0;
-      post.commentCount = await Comment.countDocuments({ postId: post._id });
-    }
-
-    return posts;
+    return await PostService._populateLikesAndComments(posts);
   }
 
   static async getPostsByUsername(username, limit = 10, cursor = null) {
@@ -109,22 +79,32 @@ class PostService {
       .populate('userId', 'username realname profilePic')
       .lean();
 
-    for (let post of posts) {
-      const populatedPost = await Post.findById(post._id)
-        .populate({
-          path: 'likes.userId',
-          select: 'username profilePic',
-          options: { sort: { createdAt: -1 }, limit: 2 }
-        })
-        .lean();
-
-      post.likesPreview = populatedPost.likes.map(l => l.userId);
-      post.likesCount = post.likes?.length || 0;
-      post.commentCount = await Comment.countDocuments({ postId: post._id });
-    }
-
-    return posts;
+    return await PostService._populateLikesAndComments(posts);
   }
+
+
+static async getPostLikes(postId, limit = 20, cursor = null) {
+  const post = await Post.findById(postId)
+    .populate('likes.userId', 'username profilePic')
+    .lean();
+
+  if (!post) throw new Error("Post not found");
+
+  let likes = [...post.likes].sort((a, b) => {
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  }).map(l => l.userId);
+
+  if (cursor) {
+    const cursorIndex = likes.findIndex(u => u._id.toString() === cursor);
+    if (cursorIndex >= 0) likes = likes.slice(cursorIndex + 1);
+  }
+
+  const sliced = likes.slice(0, limit);
+  const nextCursor = sliced.length > 0 ? sliced[sliced.length - 1]._id : null;
+
+  return { data: sliced, nextCursor };
+}
+
 
   static async likePost(postId, userId) {
     const post = await Post.findById(postId);
@@ -148,23 +128,7 @@ class PostService {
 
     return post;
   }
-   static async getPostLikes(postId, limit = 20, cursor = null) {
-    const post = await Post.findById(postId).populate({
-      path: 'likes.userId',
-      select: 'username profilePic',
-      options: { sort: { createdAt: -1 } }
-    }).lean();
 
-    if (!post) throw new Error("Post not found");
-
-    let likes = post.likes.map(l => l.userId);
-    if (cursor) {
-      const cursorIndex = likes.findIndex(u => u._id.toString() === cursor);
-      if (cursorIndex >= 0) likes = likes.slice(cursorIndex + 1);
-    }
-
-    return likes.slice(0, limit);
-  }
 
   static async updatePost(postId, userId, updateData) {
     return await Post.findOneAndUpdate(
@@ -177,6 +141,35 @@ class PostService {
   static async deletePost(postId, userId) {
     return await Post.findOneAndDelete({ _id: postId, userId });
   }
+ static async _populateLikesAndComments(posts) {
+  for (let post of posts) {
+    // 1️⃣ Total likes count
+    post.likesCount = post.likes?.length || 0;
+
+    // 2️⃣ Latest 2 likes preview
+    const latestLikes = post.likes?.slice(-2).reverse() || [];
+
+    const userIds = latestLikes.map(l => l.userId);
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('username profilePic');
+
+    post.likesPreview = userIds.map(id => {
+      const user = users.find(u => u._id.toString() === id.toString());
+      return user ? { username: user.username, profilePic: user.profilePic } : null;
+    }).filter(Boolean);
+
+    // 3️⃣ Comment count
+    post.commentCount = await Comment.countDocuments({ postId: post._id });
+
+    // 4️⃣ Remove original likes array from response
+    delete post.likes;
+  }
+
+  return posts;
 }
+
+}
+
+
 
 module.exports = PostService;
