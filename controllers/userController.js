@@ -65,7 +65,6 @@ exports.getUserById = async (req, res) => {
 exports.updateUserAndProfile = async (req, res) => {
   try {
     const { username, email, description } = req.body;
-    // If nothing provided, reject
     if (username === undefined && email === undefined && description === undefined) {
       return res.status(400).json({ success: false, message: "No valid fields to update" });
     }
@@ -85,7 +84,6 @@ exports.updateUserAndProfile = async (req, res) => {
   } catch (err) {
     console.error("Update profile error:", err);
 
-    // friendly client errors
     if (err.message === 'Username already taken' || err.message === 'Email already registered' || err.message === 'Invalid email format' || err.message.startsWith('Description')) {
       return res.status(400).json({ success: false, message: err.message });
     }

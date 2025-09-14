@@ -30,33 +30,36 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await PostService.getAllPosts();
-    const postsWithCounts = posts.map(post => ({
-      ...post,
-      commentCount: post.comments?.length || 0
-    }));
-
-    res.status(200).json({ success: true, posts: postsWithCounts });
-    } catch (err) {
-    console.error("Fetching posts failed:", err.message);
-    res.status(500).json({ error: "Failed to fetch posts" });
+    const { limit = 10, cursor } = req.query;
+    const posts = await PostService.getAllPosts(Number(limit), cursor);
+    res.status(200).json({ success: true, posts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
+// ✅ My Posts
 exports.getMyPosts = async (req, res) => {
   try {
-    const posts = await PostService.getUserPosts(req.user.id);
-    const postsWithCounts = posts.map(post => ({
-      ...post,
-      commentCount: post.comments?.length || 0
-    }));
-
-    res.status(200).json({ success: true, posts: postsWithCounts });
-    } catch (err) {
-    console.error("Fetching my posts failed:", err.message);
-    res.status(500).json({ error: "Server error" });
+    const { limit = 10, cursor } = req.query;
+    const posts = await PostService.getUserPosts(req.user.id, Number(limit), cursor);
+    res.status(200).json({ success: true, posts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ Posts by Username
+exports.getPostsByUsername = async (req, res) => {
+  try {
+    const { limit = 10, cursor } = req.query;
+    const posts = await PostService.getPostsByUsername(req.params.username, Number(limit), cursor);
+    res.status(200).json({ success: true, posts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 exports.likePost = async (req, res) => {
   try {
@@ -100,6 +103,15 @@ exports.getPostForEdit = async (req, res) => {
   }
 };
 
+exports.getPostLikes = async (req, res) => {
+  try {
+    const { limit = 20, cursor } = req.query;
+    const likes = await PostService.getPostLikes(req.params.id, Number(limit), cursor);
+    res.status(200).json({ success: true, likes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 exports.updatePost = async (req, res) => {
   try {
     const { content, image: base64Image } = req.body;
@@ -175,19 +187,3 @@ exports.deletePost = async (req, res) => {
   }
 };
 
-exports.getPostsByUsername = async (req, res) => {
-  try {
-    console.log("Fetching posts for user:", req.params.username);
-    const posts = await PostService.getPostsByUsername(req.params.username);
-    console.log(`Found ${posts.length} posts for user ${req.params.username}`);
-        const postsWithCounts = posts.map(post => ({
-      ...post,
-      commentCount: post.comments?.length || 0
-    }));
-
-    res.status(200).json({ success: true, posts: postsWithCounts });
-  } catch (err) {
-    console.error("Failed to fetch user's posts:", err.message);
-    res.status(500).json({ error: "Failed to fetch user's posts" });
-  }
-};

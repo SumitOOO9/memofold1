@@ -14,7 +14,6 @@ exports.createComment = async (req, res) => {
       parentCommentId: req.body.parentCommentId
     });
 
-    // Populate the newly created comment with replies & user info
     const populatedComment = await CommentService.populateReplies(comment);
 
     res.status(201).json({ success: true, comment: populatedComment });
@@ -24,7 +23,6 @@ exports.createComment = async (req, res) => {
   }
 };
 
-// Get all comments for a post (with nested replies)
 exports.getComments = async (req, res) => {
   try {
     const comments = await CommentService.getComments({

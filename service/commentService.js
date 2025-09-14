@@ -4,7 +4,6 @@ const Post = require('../models/Post');
 
 class CommentService {
 
-  // Create a new comment or reply
   static async createComment({ content, postId, userId, parentCommentId }) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -41,8 +40,6 @@ class CommentService {
   }
 
 
-// Recursive function to populate replies
-// Recursive function to populate replies
 static async populateReplies(comment) {
   // If comment is just an ID, fetch full comment
   if (!comment.content) {

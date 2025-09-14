@@ -23,73 +23,104 @@ class PostService {
     return await post.save();
   }
 
-  // Build nested comment tree
-  static async populateComments(postId) {
-    const comments = await Comment.find({ postId })
-      .sort({ createdAt: 1 })
-      .populate('userId', 'username realname profilePic')
-      .lean();
+  // static async populateComments(postId) {
+  //   const comments = await Comment.find({ postId })
+  //     .sort({ createdAt: 1 })
+  //     .populate('userId', 'username realname profilePic')
+  //     .lean();
 
-    const map = new Map();
-    comments.forEach(c => map.set(c._id.toString(), { ...c, replies: [] }));
+  //   const map = new Map();
+  //   comments.forEach(c => map.set(c._id.toString(), { ...c, replies: [] }));
 
-    const roots = [];
-    comments.forEach(c => {
-      if (c.parentComment) {
-        const parent = map.get(c.parentComment.toString());
-        if (parent) parent.replies.push(map.get(c._id.toString()));
-      } else {
-        roots.push(map.get(c._id.toString()));
-      }
-    });
+  //   const roots = [];
+  //   comments.forEach(c => {
+  //     if (c.parentComment) {
+  //       const parent = map.get(c.parentComment.toString());
+  //       if (parent) parent.replies.push(map.get(c._id.toString()));
+  //     } else {
+  //       roots.push(map.get(c._id.toString()));
+  //     }
+  //   });
 
-    return roots;
-  }
+  //   return roots;
+  // }
 
-  static async getAllPosts() {
-    const posts = await Post.find({})
+ static async getAllPosts(limit = 10, cursor = null) {
+    const query = cursor ? { _id: { $lt: cursor } } : {};
+
+    const posts = await Post.find(query)
       .sort({ createdAt: -1 })
+      .limit(limit)
       .populate('userId', 'username realname profilePic')
-        .populate('likes.userId', 'username realname profilePic')
-
       .lean();
 
-    // Attach comments
     for (let post of posts) {
-      post.comments = await PostService.populateComments(post._id);
-      post.commentCount = post.comments.length;
+      const populatedPost = await Post.findById(post._id)
+        .populate({
+          path: 'likes.userId',
+          select: 'username profilePic',
+          options: { sort: { createdAt: -1 }, limit: 2 }
+        })
+        .lean();
+
+      post.likesPreview = populatedPost.likes.map(l => l.userId);
+      post.likesCount = post.likes?.length || 0;
+
+      post.commentCount = await Comment.countDocuments({ postId: post._id });
     }
 
     return posts;
   }
 
-  static async getUserPosts(userId) {
-    const posts = await Post.find({ userId })
-      .sort({ createdAt: -1 })
-      .populate('userId', 'username realname profilePic')
-        .populate('likes.userId', 'username realname profilePic')
+  static async getUserPosts(userId, limit = 10, cursor = null) {
+    const query = { userId };
+    if (cursor) query._id = { $lt: cursor };
 
+    const posts = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('userId', 'username realname profilePic')
       .lean();
 
     for (let post of posts) {
-      post.comments = await PostService.populateComments(post._id);
-      post.commentCount = post.comments.length;
+      const populatedPost = await Post.findById(post._id)
+        .populate({
+          path: 'likes.userId',
+          select: 'username profilePic',
+          options: { sort: { createdAt: -1 }, limit: 2 }
+        })
+        .lean();
+
+      post.likesPreview = populatedPost.likes.map(l => l.userId);
+      post.likesCount = post.likes?.length || 0;
+      post.commentCount = await Comment.countDocuments({ postId: post._id });
     }
 
     return posts;
   }
 
-  static async getPostsByUsername(username) {
-    const posts = await Post.find({ username })
-      .sort({ createdAt: -1 })
-      .populate('userId', 'username realname profilePic')
-        .populate('likes.userId', 'username realname profilePic')
+  static async getPostsByUsername(username, limit = 10, cursor = null) {
+    const query = { username };
+    if (cursor) query._id = { $lt: cursor };
 
+    const posts = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('userId', 'username realname profilePic')
       .lean();
 
     for (let post of posts) {
-      post.comments = await PostService.populateComments(post._id);
-      post.commentCount = post.comments.length;
+      const populatedPost = await Post.findById(post._id)
+        .populate({
+          path: 'likes.userId',
+          select: 'username profilePic',
+          options: { sort: { createdAt: -1 }, limit: 2 }
+        })
+        .lean();
+
+      post.likesPreview = populatedPost.likes.map(l => l.userId);
+      post.likesCount = post.likes?.length || 0;
+      post.commentCount = await Comment.countDocuments({ postId: post._id });
     }
 
     return posts;
@@ -116,6 +147,23 @@ class PostService {
     if (post) post.comments = await PostService.populateComments(post._id);
 
     return post;
+  }
+   static async getPostLikes(postId, limit = 20, cursor = null) {
+    const post = await Post.findById(postId).populate({
+      path: 'likes.userId',
+      select: 'username profilePic',
+      options: { sort: { createdAt: -1 } }
+    }).lean();
+
+    if (!post) throw new Error("Post not found");
+
+    let likes = post.likes.map(l => l.userId);
+    if (cursor) {
+      const cursorIndex = likes.findIndex(u => u._id.toString() === cursor);
+      if (cursorIndex >= 0) likes = likes.slice(cursorIndex + 1);
+    }
+
+    return likes.slice(0, limit);
   }
 
   static async updatePost(postId, userId, updateData) {

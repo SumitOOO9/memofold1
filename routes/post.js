@@ -27,6 +27,7 @@ router.post('/like/:id', authenticate, postController.likePost);
 router.get('/edit/:id', authenticate, postController.getPostForEdit);
 router.put('/update/:id', authenticate, postController.updatePost);
 router.delete('/delete/:id', authenticate, postController.deletePost);
+router.get('/:id/likes', authenticate, postController.getPostLikes);
 
 // Comment routes
 router.post('/:postId/comments', 
