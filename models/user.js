@@ -38,15 +38,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    friends: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: []
-    }],
+  friends: [
+  {
+    _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // reference to the User
+    username: { type: String },
+    realname: { type: String },
+    profilePic: { type: String }
+  }
+],
+
     friendrequests: {
       type:[
         {
           from: {type: mongoose.Schema.Types.ObjectId, ref: "User"},
+                username: { type: String },     // snapshot
+      realname: { type: String },     // snapshot
+      profilePic: { type: String },
           status: {type: String, enum: ['pending', 'accepted', 'decline'], default: 'pending'},
           createdAt: {type: Date, default: Date.now}
         }

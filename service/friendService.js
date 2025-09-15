@@ -7,7 +7,7 @@ class FriendService {
     if (!senderUserId || !receiverUserId) {
       throw new Error("Sender or receiver ID missing");
     }
-
+    console.log("ss", senderUserId.toString(), receiverUserId.toString());
     if (senderUserId.toString() === receiverUserId.toString()) {
       throw new Error("You cannot send friend request to yourself");
     }
@@ -16,6 +16,10 @@ class FriendService {
     if (!receiver) {
       throw new Error("User not found");
     }
+    const sender = await User.findById(senderUserId).select("realname username profilePic");
+  if (!sender) {
+    throw new Error("Sender not found");
+  }
 
     // Ensure friendrequests exists
     if (!receiver.friendrequests) {
@@ -37,19 +41,29 @@ class FriendService {
         sender: senderUserId,
         receiver: receiverUserId,
         type: "friend_request",
+   
       });
 
       return { success: true, message: "Friend request cancelled" };
     }
+    console.log("Sender:", sender.username, sender.profilePic, sender.realname);
 
     // Send new request
-    receiver.friendrequests.push({ from: senderUserId, status: "pending" });
+    receiver.friendrequests.push({ from: senderUserId, status: "pending",   realname: sender.realname,
+    username: sender.username,
+    profilePic: sender.profilePic,
+   });
     await receiver.save();
 
     const notification = new Notification({
       receiver: receiverUserId,
       sender: senderUserId,
       type: "friend_request",
+               metadata: {
+      realname: sender.realname,
+      username: sender.username,
+      profilePic: sender.profilePic,
+    },
     });
     await notification.save();
 
@@ -62,8 +76,9 @@ class FriendService {
   }
 
   static async respondToFriendRequest(receiverUserId, senderUserId, action, io) {
-    const receiver = await User.findById(receiverUserId);
-    if (!receiver) {
+  const receiver = await User.findById(receiverUserId);
+  const sender = await User.findById(senderUserId);
+    if (!receiver || !sender) {
       throw new Error("User not found");
     }
 
@@ -80,10 +95,19 @@ class FriendService {
 
     if (action === "accept") {
       request.status = "accepted";
-
-      receiver.friends.addToSet(senderUserId);
-      const sender = await User.findById(senderUserId);
-      sender.friends.addToSet(receiverUserId);
+      console.log("Adding friends:", receiver.username, sender.username);
+      receiver.friends.addToSet({
+        _id: sender._id,
+        username: sender.username,
+        profilePic: sender.profilePic,
+        realname: sender.realname
+      });
+      sender.friends.addToSet({
+        _id: receiver._id,
+        username: receiver.username,
+        profilePic: receiver.profilePic,
+        realname: receiver.realname
+      });
 
       await receiver.save();
       await sender.save();
