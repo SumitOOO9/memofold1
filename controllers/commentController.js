@@ -39,6 +39,29 @@ exports.getComments = async (req, res) => {
   }
 };
 
+exports.getReplies = async (req,res) => {
+  try{
+    const parentCommentId = req.params.commentId;
+    const limit = req.query.limit || 10;
+    const cursor = req.query.cursor || null;
+    const {replies, nextCursor} = await CommentService.getReplies({
+      parentCommentId,
+      limit,
+      cursor
+    })
+
+    res.status(200).json({
+      success: true,
+      replies,
+      nextCursor
+    })
+  } catch(error)
+  {
+    console.error('Error fetching replies:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
 // Like/unlike a comment
 exports.likeComment = async (req, res) => {
   try {
