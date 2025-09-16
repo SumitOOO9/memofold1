@@ -46,6 +46,7 @@ router.post('/comments/:commentId/like',
   commentController.likeComment
 );
 
+router.get('/replies/:commentId',authenticate,commentController.getReplies)
 router.put('/comments/:commentId', 
   authenticate, 
   validateCommentUpdate, 
