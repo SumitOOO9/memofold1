@@ -2,6 +2,7 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const { sendVerificationCode } = require("../service/sendEmail");
 const passwordReset = require("../models/passwordReset");
+const cache = require("../utils/cache");
 
 exports.register = async (req, res) => {
   try {
@@ -59,23 +60,21 @@ exports.login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
-    // We expect either email or username to be provided
     if ((!email && !username) || !password) {
       return res.status(400).json({ message: "Email or username and password are required." });
     }
 
-    // Build dynamic query
     const query = email
       ? { email: email.toLowerCase().trim() }
       : { username: username.trim() };
-       const user = await User.findOne(query).select("+password");
+
+    // Always fetch from DB to verify password
+    const user = await User.findOne(query).select("+password");
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials." });
     }
-    console.log(password)
 
     const isMatch = await user.comparePassword(password);
-
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials." });
     }
@@ -91,22 +90,21 @@ exports.login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    // Cache the user object WITHOUT password
+    const { password: pwd, ...safeUser } = user.toObject();
+    const cacheKey = email ? `user:${email}` : `user:${username}`;
+    await cache.set(cacheKey, safeUser, 3600); 
+
     return res.status(200).json({
       message: "Login successful.",
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        realname: user.realname,
-        email: user.email,
-        profilePic: user.profilePic,
-      },
     });
   } catch (err) {
     console.error("❌ Login error:", err);
     return res.status(500).json({ message: "Internal server error during login." });
   }
 };
+
 
 exports.forgotPassword = async (req, res) => {
   try {

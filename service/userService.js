@@ -74,9 +74,9 @@ class UserService {
 
  static async getUserWithProfile(userId) {
     const cached = await cache.get(`user:${userId}`);
-    // if (cached) {
-    //   return JSON.parse(cached);
-    // }
+   if (cached) {
+      return cached;
+    }
 
     const user = await userRepository.findById(userId);
     const profile = await userRepository.findProfile(userId);
@@ -87,12 +87,8 @@ class UserService {
       postCount,
       friendsCount
     },
-firendList: (user.friends || []).map(f => ({
-      _id: f._id.toString(),
-      username: f.username,
-      realname: f.realname,
-      profilePic: f.profilePic
-    }))  };
+    // firendList: user.friends || []
+  };
 
     await cache.set(`user:${userId}`, JSON.stringify(result), 300);
 
