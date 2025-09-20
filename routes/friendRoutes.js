@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.post("/friend-request/:reciverUserId", authenticate, friendController.toggleFriendRequest);
 router.post("/friend-request/:reciverUserId/respond", authenticate, friendController.respondToRequest);
-
+router.get("/friends-list", authenticate, friendController.getFriendsList)
+router.delete("/remove-friend/:firendId", authenticate, friendController.removeFriend)
 module.exports = router;

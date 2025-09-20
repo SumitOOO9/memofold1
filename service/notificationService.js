@@ -1,24 +1,50 @@
-const Notification = require("../models/notification");
+const NotificationRepository = require('../repositories/notififcationRepository');
+const redis = require('../utils/cache');
 
 class NotificationService {
-    static async getNotification(userId, limit = 10, cursor = null) {
-        const query = { recivier: userId };
-        if (cursor) query._id = { $lt: cursor };
-        const notifications = await Notification.find(query)
-            .sort({ createdAt: -1 })
-            .limit(limit)
-            .populate('sender', 'username profilePic realname')
-            .lean();
-        return notifications;
 
+  // Get notifications with cache
+  static async getNotification(userId, limit = 10, cursor = null) {
+    const cacheKey = `user:${userId}:notifications`;
+
+    // Try fetching from Redis
+    let notifications = await redis.get(cacheKey);
+    if (notifications) return notifications;
+
+    // Fetch from DB
+    notifications = await NotificationRepository.findByUser(userId, limit, cursor);
+
+    // Save in Redis for 1 hour
+    await redis.set(cacheKey, notifications, 3600);
+
+    return notifications;
+  }
+
+  // Mark notification as read and invalidate cache
+  static async markAsRead(notificationId, userId) {
+    const notif = await NotificationRepository.markAsRead(notificationId, userId);
+
+    // Invalidate cache
+    await redis.del(`user:${userId}:notifications`);
+    return notif;
+  }
+
+  // Create notification and invalidate cache
+  static async createNotification(data) {
+    const notif = await NotificationRepository.create(data);
+
+    // Invalidate cache for recipient
+    await redis.del(`user:${data.receiver}:notifications`);
+    return notif;
+  }
+
+  // Delete notifications (e.g., friend requests declined)
+  static async deleteNotifications(filter) {
+    const result = await NotificationRepository.delete(filter);
+    if (filter.receiver) {
+      await redis.del(`user:${filter.receiver}:notifications`);
     }
-    static async markAsRead(notificationId, userId) {
-      const notification = await Notification.findOneAndUpdate(
-      { _id: notificationId, recipient: userId },
-      { read: true },
-      { new: true }
-    );
-    return notification;
+    return result;
   }
 }
 

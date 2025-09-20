@@ -1,174 +1,65 @@
 const mongoose = require('mongoose');
-const Comment = require('../models/comment');
-const Post = require('../models/Post');
+const CommentRepository = require('../repositories/commentRepository');
+const redisClient = require('../utils/cache');
+const PostRepository = require('../repositories/postRepository');
 
 class CommentService {
 
-  static async createComment({ content, postId, userId, parentCommentId }) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const comment = await Comment.create([{
-        content,
-        postId,
-        userId,
-        parentComment: parentCommentId || null
-      }], { session });
-
-      await Post.updateOne(
-        { _id: postId },
-        { $push: { comments: comment[0]._id } },
-        { session }
-      );
-
-      if (parentCommentId) {
-        await Comment.updateOne(
-          { _id: parentCommentId },
-          { $push: { replies: comment[0]._id } },
-          { session }
-        );
-      }
-
-      await session.commitTransaction();
-      session.endSession();
-      return comment[0];
-    } catch (err) {
-      await session.abortTransaction();
-      session.endSession();
-      throw err;
-    }
-  }
-
-
-static async populateReplies(comment) {
-  // If comment is just an ID, fetch full comment
-  if (!comment.content) {
-    comment = await Comment.findById(comment._id || comment)
-      .populate({ path: 'userId', select: 'username profilePic realname' })
-      .lean();
-  }
-
-  // If comment's user is deleted, skip this comment
-  if (!comment.userId) return null;
-
-  // Fetch all replies dynamically
-  const replies = await Comment.find({ parentComment: comment._id })
-    .sort('-createdAt')
-    .populate({ path: 'userId', select: 'username profilePic realname' })
-    .lean();
-
-  comment.replies = [];
-  for (let reply of replies) {
-    const populatedReply = await CommentService.populateReplies(reply);
-    if (populatedReply) comment.replies.push(populatedReply); // only push if user exists
-  }
-
-  return comment;
-}
-
-static async getComments({ postId, limit = 20, skip = 0, sort = '-createdAt' }) {
-  const comments = await Comment.find({ postId, parentComment: null })
-    .sort(sort)
-    .skip(parseInt(skip))
-    .limit(parseInt(limit))
-    .populate({ path: 'userId', select: 'username profilePic realname' })
-    .lean();
-
-  const populatedComments = [];
-  for (let comment of comments) {
-    const populated = await CommentService.populateReplies(comment);
-    if (populated) populatedComments.push(populated); // only include if user exists
-  }
-
-  return populatedComments;
-}
-
-
-static async getReplies({ parentCommentId, limit = 10, cursor}){
-  const query = {parentComment : parentCommentId}
-  if(cursor){
-    query.$or = [
-      {createdAt: {$lt : new Date(cursor)}},
-    ]
-  }
-  const replies = await Comment.find(query)
-    .sort({createdAt : -1, _id : -1})
-    .limit(limit)
-    .populate({path : 'userId',select : 'username profilePic realname'})
-    .lean(
-    
-  )
-
-  let nextCursor = null;
-  if(replies.length === limit){
-    const last = replies[replies.length - 1]
-    nextCursor = last.createdAt.toISOString()
-  }
-  return {replies, nextCursor}
-}
-
-
-  // Toggle like
-  static async toggleLike(commentId, userId) {
-    const comment = await Comment.findById(commentId);
-    if (!comment) throw new Error('Comment not found');
-
-    const hasLiked = comment.likes.includes(userId);
-    const update = hasLiked ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } };
-    return await Comment.findByIdAndUpdate(commentId, update, { new: true });
-  }
-
-  // Update comment
-  static async updateComment(commentId, userId, content) {
-    const updatedComment = await Comment.findOneAndUpdate(
-      { _id: commentId, userId },
-      { content, isEdited: true },
-      { new: true }
-    ).populate({ path: 'userId', select: 'username profilePic realname' });
-
-    if (!updatedComment) throw new Error('Comment not found or no permission');
-    return updatedComment;
-  }
-
-  // Delete comment with replies recursively
-static async deleteComment(commentId, userId) {
-  const comment = await Comment.findById(commentId);
-  if (!comment) throw new Error('Comment not found');
-
-  const post = await Post.findById(comment.postId);
-  if (!post) throw new Error('Post not found');
-
-  // Only comment owner or post owner can delete
-  if (comment.userId.toString() !== userId && post.userId.toString() !== userId) {
-    throw new Error('No permission to delete this comment');
-  }
-
+static async createComment({ content, postId, userId, parentCommentId }, io) {
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
-    // Recursively delete all replies dynamically
-    const deleteReplies = async (parentCommentId) => {
-      const replies = await Comment.find({ parentComment: parentCommentId }).session(session);
-      for (let reply of replies) {
-        await deleteReplies(reply._id); // delete nested replies first
-        await Comment.findByIdAndDelete(reply._id, { session });
-      }
-    };
-
-    await deleteReplies(comment._id); // start with the main comment
-    await Comment.findByIdAndDelete(comment._id, { session });
-
-    // Remove comment from post
-    await Post.updateOne(
-      { _id: comment.postId },
-      { $pull: { comments: comment._id } },
-      { session }
+    const [comment] = await CommentRepository.create(
+      { content, postId, userId, parentComment: parentCommentId || null }, 
+      session
     );
+
+    await CommentRepository.addCommentToPost(postId, comment._id, session);
+
+    if (parentCommentId) {
+      await CommentRepository.addReply(parentCommentId, comment._id, session);
+    }
 
     await session.commitTransaction();
     session.endSession();
-    return true;
+
+    // Invalidate cache
+    await redisClient.del(`comments:post:${postId}`);
+    if (parentCommentId) await redisClient.del(`replies:comment:${parentCommentId}`);
+
+    const commentCount = await PostRepository.countComments(postId);
+    io.to(`post:${postId}`).emit("newComment", {
+      comment,
+      parentCommentId,
+      commentCount
+    });
+
+    // ---------------------------
+    // Notification to post owner (if not commenting on own post)
+    const post = await Post.findById(postId).select("userId");
+    if (post.userId.toString() !== userId.toString()) {
+      const user = await User.findById(userId).select("username realname profilePic");
+      const notification = new Notification({
+        receiver: post.userId,
+        sender: userId,
+        type: "post_comment",
+        metadata: {
+          username: user.username,
+          realname: user.realname,
+          profilePic: user.profilePic,
+          postId: post._id,
+          commentId: comment._id
+        }
+      });
+      await notification.save();
+
+      io.to(post.userId.toString()).emit("newNotification", {
+        message: `${user.username} commented on your post`,
+        notification
+      });
+    }
+
+    return comment;
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
@@ -176,6 +67,144 @@ static async deleteComment(commentId, userId) {
   }
 }
 
+
+  // Populate replies recursively
+  static async populateReplies(comment) {
+    if (!comment.content) {
+      comment = await CommentRepository.findById(comment._id || comment);
+    }
+    if (!comment.userId) return null;
+
+    const replies = await CommentRepository.findReplies(comment._id);
+    comment.replies = [];
+
+    for (let reply of replies) {
+      const populated = await CommentService.populateReplies(reply);
+      if (populated) comment.replies.push(populated);
+    }
+
+    return comment;
+  }
+
+  // Get comments for a post
+  static async getComments({ postId, limit = 20, skip = 0, sort = '-createdAt' }) {
+    const cacheKey = `comments:post:${postId}:${limit}:${skip}:${sort}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    const comments = await CommentRepository.find({ postId, parentComment: null }, limit, skip, sort);
+    const populatedComments = [];
+
+    for (let comment of comments) {
+      const populated = await CommentService.populateReplies(comment);
+      if (populated) populatedComments.push(populated);
+    }
+
+    await redisClient.set(cacheKey, JSON.stringify(populatedComments), 'EX', 60); // 60 sec cache
+    return populatedComments;
+  }
+
+  static async getReplies({ parentCommentId, limit = 10, cursor }) {
+    const cacheKey = `replies:comment:${parentCommentId}:${limit}:${cursor || 'first'}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    const replies = await CommentRepository.findReplies(parentCommentId, limit, cursor);
+    const nextCursor = replies.length === limit ? replies[replies.length - 1].createdAt.toISOString() : null;
+
+    await redisClient.set(cacheKey, JSON.stringify({ replies, nextCursor }), 'EX', 60);
+    return { replies, nextCursor };
+  }
+
+static async toggleLike(commentId, userId, io) {
+  const comment = await CommentRepository.toggleLike(commentId, userId);
+  await redisClient.del(`comments:post:${comment.postId}`);
+
+  let action = comment.likes.some(like => like.userId.toString() === userId.toString()) ? "liked" : "unliked";
+
+  // Emit real-time update
+  io.to(`comment:${commentId}`).emit("commentLiked", {
+    commentId,
+    postId: comment.postId,
+    action,
+    likesCount: comment.likes.length
+  });
+
+  // Notification if liked and not own comment
+  if (action === "liked" && comment.userId.toString() !== userId.toString()) {
+    const user = await User.findById(userId).select("username realname profilePic");
+    const notification = new Notification({
+      receiver: comment.userId,
+      sender: userId,
+      type: "comment_like",
+      metadata: {
+        username: user.username,
+        realname: user.realname,
+        profilePic: user.profilePic,
+        postId: comment.postId,
+        commentId: comment._id
+      }
+    });
+    await notification.save();
+
+    io.to(comment.userId.toString()).emit("newNotification", {
+      message: `${user.username} liked your comment`,
+      notification
+    });
+  } else if (action === "unliked") {
+    await Notification.deleteMany({
+      receiver: comment.userId,
+      sender: userId,
+      type: "comment_like",
+      "metadata.commentId": comment._id
+    });
+  }
+
+  return comment;
+}
+
+
+  static async updateComment(commentId, userId, content) {
+    const comment = await CommentRepository.update({ _id: commentId, userId }, { content, isEdited: true });
+    if (!comment) throw new Error('Comment not found or no permission');
+    await redisClient.del(`comments:post:${comment.postId}`);
+    return comment;
+  }
+
+  static async deleteComment(commentId, userId) {
+    const comment = await CommentRepository.findById(commentId);
+    if (!comment) throw new Error('Comment not found');
+
+    const postId = comment.postId;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const deleteRepliesRecursively = async (parentId) => {
+        const replies = await CommentRepository.findReplies(parentId, 1000); // get all
+        for (let r of replies) {
+          await deleteRepliesRecursively(r._id);
+          await CommentRepository.delete(r._id, session);
+        }
+      };
+
+      await deleteRepliesRecursively(commentId);
+      await CommentRepository.delete(commentId, session);
+
+      // Remove comment from post
+      await Post.updateOne({ _id: postId }, { $pull: { comments: commentId } }, { session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      await redisClient.del(`comments:post:${postId}`);
+      return true;
+    } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
+      throw err;
+    }
+  }
 }
 
 module.exports = CommentService;

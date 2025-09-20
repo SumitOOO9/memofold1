@@ -25,6 +25,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+const onlineUsers = new Map();
 
 const PORT = process.env.PORT || 3000;
 
@@ -85,22 +86,30 @@ app.use((err, req, res, next) => {
 io.on("connection", (socket) => {
   console.log("⚡ New client connected:", socket.id);
 
-  // join room per user (for private notifications)
+  // Join per-user room
   socket.on("join", (userId) => {
     socket.join(userId);
+    onlineUsers.set(userId, socket.id);
     console.log(`User ${userId} joined their room`);
   });
 
-  // send notification
+  // Send generic notification
   socket.on("sendNotification", ({ receiverId, message }) => {
     io.to(receiverId).emit("notification", { message });
     console.log(`📨 Sent notification to ${receiverId}: ${message}`);
   });
 
+  // Handle disconnect
   socket.on("disconnect", () => {
     console.log("❌ Client disconnected:", socket.id);
+    // Remove from online users
+    for (let [userId, sId] of onlineUsers.entries()) {
+      if (sId === socket.id) onlineUsers.delete(userId);
+    }
   });
 });
+app.set("io", io);
+app.set("onlineUsers", onlineUsers);
 
 
 server.listen(PORT, () => {

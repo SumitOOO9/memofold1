@@ -63,7 +63,7 @@ exports.getPostsByUsername = async (req, res) => {
 
 exports.likePost = async (req, res) => {
   try {
-    const post = await PostService.likePost(req.params.id, req.user.id);
+    const post = await PostService.likePost(req.params.id, req.user.id, req.io);
 
     res.json({ success: true, likes: post.likes });
   } catch (err) {

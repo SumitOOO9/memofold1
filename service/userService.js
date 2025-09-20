@@ -1,75 +1,58 @@
-// services/userService.js
-const mongoose = require('mongoose');
-const User = require('../models/user');
-const Profile = require('../models/profile');
+const mongoose = require("mongoose");
+const userRepository = require("../repositories/UserRepository");
+const cache = require("../utils/cache");
+const postRepository = require("../repositories/postRepository")
 
 class UserService {
-  static async isUsernameTaken(username, excludeUserId = null) {
+  async isUsernameTaken(username, excludeUserId = null) {
     const cond = { username };
     if (excludeUserId) cond._id = { $ne: excludeUserId };
-    const user = await User.findOne(cond).lean();
+    const user = await userRepository.findOne(cond);
     return !!user;
   }
 
-  static async isEmailTaken(email, excludeUserId = null) {
+  async isEmailTaken(email, excludeUserId = null) {
     const cond = { email };
     if (excludeUserId) cond._id = { $ne: excludeUserId };
-    const user = await User.findOne(cond).lean();
+    const user = await userRepository.findOne(cond);
     return !!user;
   }
 
-  static async updateUserFields(userId, userUpdates = {}, session = null) {
-    if (!userUpdates || Object.keys(userUpdates).length === 0) {
-      return User.findById(userId).select('-password');
-    }
-    const opts = { new: true, runValidators: true };
-    if (session) opts.session = session;
-    return User.findByIdAndUpdate(userId, { $set: userUpdates }, opts).select('-password');
+  async updateUserFields(userId, userUpdates = {}, session = null) {
+    return userRepository.updateUserFields(userId, userUpdates, session);
   }
 
-  static async updateProfile(userId, profileUpdates = {}, session = null) {
-    if (!profileUpdates || Object.keys(profileUpdates).length === 0) {
-      return Profile.findOne({ user: userId });
-    }
-    const opts = { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true };
-    if (session) opts.session = session;
-    return Profile.findOneAndUpdate({ user: userId }, { $set: profileUpdates }, opts);
+  async updateProfile(userId, profileUpdates = {}, session = null) {
+    return userRepository.updateProfile(userId, profileUpdates, session);
   }
 
-  /**
-   * Update user and profile atomically (transaction).
-   * Accepts an object with optional keys: username, email, description
-   */
-  static async updateUserAndProfileAtomic(userId, { username, email, description } = {}) {
+  async updateUserAndProfileAtomic(userId, { username, email, description } = {}) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const userUpdates = {};
       const profileUpdates = {};
 
-      // Prepare updates
       if (username !== undefined) userUpdates.username = username;
       if (email !== undefined) userUpdates.email = email;
       if (description !== undefined) profileUpdates.description = description?.trim();
 
-      // Validations
       if (userUpdates.username) {
         const taken = await this.isUsernameTaken(userUpdates.username, userId);
-        if (taken) throw new Error('Username already taken');
+        if (taken) throw new Error("Username already taken");
       }
 
       if (userUpdates.email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(userUpdates.email)) throw new Error('Invalid email format');
+        if (!emailRegex.test(userUpdates.email)) throw new Error("Invalid email format");
         const emailTaken = await this.isEmailTaken(userUpdates.email, userId);
-        if (emailTaken) throw new Error('Email already registered');
+        if (emailTaken) throw new Error("Email already registered");
       }
 
       if (profileUpdates.description !== undefined && profileUpdates.description.length > 500) {
-        throw new Error('Description cannot exceed 500 characters');
+        throw new Error("Description cannot exceed 500 characters");
       }
 
-      // Perform updates in parallel within the transaction
       const [updatedUser, updatedProfile] = await Promise.all([
         this.updateUserFields(userId, userUpdates, session),
         this.updateProfile(userId, profileUpdates, session)
@@ -77,6 +60,9 @@ class UserService {
 
       await session.commitTransaction();
       session.endSession();
+
+      // Invalidate cache
+      await cache.del(`user:${userId}`);
 
       return { updatedUser, updatedProfile };
     } catch (err) {
@@ -86,11 +72,29 @@ class UserService {
     }
   }
 
-  static async getUserWithProfile(userId) {
-    const user = await User.findById(userId).select('-password');
-    const profile = await Profile.findOne({ user: userId });
-    return { user, profile };
+  async getUserWithProfile(userId) {
+    const cached = await cache.get(`user:${userId}`);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const user = await userRepository.findById(userId);
+    const profile = await userRepository.findProfile(userId);
+  const postCount = await postRepository.countPostsByUserId({ userId });
+  const friendsCount = user.friends ? user.friends.length : 0;
+
+    const result = { user, profile, stats:{
+      postCount,
+      friendsCount
+    },
+    firendList: user.friends || []
+  };
+
+    await cache.set(`user:${userId}`, JSON.stringify(result), 300);
+
+    return result;
   }
 }
+
 
 module.exports = UserService;

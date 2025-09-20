@@ -1,7 +1,6 @@
-const Post = require('../models/Post');
-const Comment = require('../models/comment');
-const User = require('../models/user');
+const PostRepository = require('../repositories/postRepository');
 const UploadService = require('./uploadService');
+const redisClient = require('../utils/cache'); 
 
 class PostService {
 
@@ -13,76 +12,74 @@ class PostService {
       if (!imageUrl) throw new Error("Invalid image format");
     }
 
-    const post = new Post({
+    const post = await PostRepository.create({
       content: content.trim(),
       image: imageUrl,
       userId,
       username,
-      createdAt: createdAt ? new Date(createdAt) : Date.now(),
+      createdAt: createdAt ? new Date(createdAt) : Date.now()
     });
 
-    return await post.save();
+    // Invalidate cached posts
+    await redisClient.del('posts:all');
+    await redisClient.del(`posts:user:${userId}`);
+    
+    return post;
   }
 
-  // static async populateComments(postId) {
-  //   const comments = await Comment.find({ postId })
-  //     .sort({ createdAt: 1 })
-  //     .populate('userId', 'username realname profilePic')
-  //     .lean();
-
-  //   const map = new Map();
-  //   comments.forEach(c => map.set(c._id.toString(), { ...c, replies: [] }));
-
-  //   const roots = [];
-  //   comments.forEach(c => {
-  //     if (c.parentComment) {
-  //       const parent = map.get(c.parentComment.toString());
-  //       if (parent) parent.replies.push(map.get(c._id.toString()));
-  //     } else {
-  //       roots.push(map.get(c._id.toString()));
-  //     }
-  //   });
-
-  //   return roots;
-  // }
   static async getAllPosts(limit = 10, cursor = null) {
+    const cacheKey = `posts:all:${limit}:${cursor || 'first'}`;
+    // const cached = await redisClient.get(cacheKey);
+
+    // if (cached) return JSON.parse(cached);
+
     const query = cursor ? { _id: { $lt: cursor } } : {};
+    const posts = await PostRepository.find(query, limit);
+    // console.log("Fetched posts from DB:", posts.length);
 
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('userId', 'username realname profilePic')
-      .lean();
+    const populatedPosts = await PostService._populateLikesAndComments(posts);
 
-    return await PostService._populateLikesAndComments(posts);
+    await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
+    return populatedPosts;
   }
-static async getUserPosts(userId, limit = 10, cursor = null) {
+
+  static async getUserPosts(userId, limit = 10, cursor = null) {
+    const cacheKey = `posts:user:${userId}:${limit}:${cursor || 'first'}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const query = { userId };
     if (cursor) query._id = { $lt: cursor };
 
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('userId', 'username realname profilePic')
-      .lean();
+    const posts = await PostRepository.find(query, limit);
+    const populatedPosts = await PostService._populateLikesAndComments(posts);
 
-    return await PostService._populateLikesAndComments(posts);
+    await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
+    return populatedPosts;
   }
 
-  static async getPostsByUsername(username, limit = 10, cursor = null) {
-    const query = { username };
-    if (cursor) query._id = { $lt: cursor };
+  static async getPostById(postId) {
+    const cacheKey = `post:${postId}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) return JSON.parse(cached);
 
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('userId', 'username realname profilePic')
-      .lean();
+    const post = await PostRepository.findById(postId);
+    if (post) post.comments = await Comment.find({ postId }).lean();
 
-    return await PostService._populateLikesAndComments(posts);
+    await redisClient.set(cacheKey, JSON.stringify(post), 'EX', 60);
+    return post;
   }
 
+  static async updatePost(postId, userId, updateData) {
+    const post = await PostRepository.update({ _id: postId, userId }, updateData);
+    
+    // Invalidate caches
+    await redisClient.del('posts:all');
+    await redisClient.del(`posts:user:${userId}`);
+    await redisClient.del(`post:${postId}`);
 
+    return post;
+  }
 static async getPostLikes(postId, limit = 20, cursor = null) {
   const post = await Post.findById(postId).lean();
   if (!post) throw new Error("Post not found");
@@ -116,78 +113,113 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
 
 
 
-  static async likePost(postId, userId) {
+ static async likePost(postId, userId, io) {
     const post = await Post.findById(postId);
     if (!post) throw new Error("Post not found");
 
     const likeIndex = post.likes.findIndex(like => like.userId.toString() === userId.toString());
-    if (likeIndex === -1) post.likes.push({ userId });
-    else post.likes.splice(likeIndex, 1);
+    let action = "";
 
-    return await post.save();
+    if (likeIndex === -1) {
+      post.likes.push({ userId, createdAt: new Date() });
+      action = "liked";
+
+      // Send notification to post owner (if not liking own post)
+      if (post.userId.toString() !== userId.toString()) {
+        const user = await User.findById(userId).select("username realname profilePic");
+        const notification = new Notification({
+          receiver: post.userId,
+          sender: userId,
+          type: "post_like",
+          metadata: {
+            username: user.username,
+            realname: user.realname,
+            profilePic: user.profilePic,
+            postId: post._id
+          }
+        });
+        await notification.save();
+
+        io.to(post.userId.toString()).emit("newNotification", {
+          message: `${user.username} liked your post`,
+          notification
+        });
+      }
+
+    } else {
+      post.likes.splice(likeIndex, 1);
+      action = "unliked";
+
+      // Remove notification if unliked
+      await Notification.deleteMany({
+        receiver: post.userId,
+        sender: userId,
+        type: "post_like",
+        "metadata.postId": post._id
+      });
+    }
+
+    await post.save();
+
+    // Emit real-time update for post viewers
+    io.to(`post:${postId}`).emit("postLiked", {
+      postId,
+      action,
+      likesCount: post.likes.length,
+      likesPreview: populatedPost[0].likesPreview
+
+    });
+
+    return post;
   }
+  static async deletePost(postId, userId) {
+    const post = await PostRepository.delete({ _id: postId, userId });
 
-  static async getPostById(postId) {
-    const post = await Post.findById(postId)
-      .populate('userId', 'username realname profilePic')
-        .populate('likes.userId', 'username realname profilePic')
+    if (!post) return null;
 
-      .lean();
+    // Delete comments
+    await Comment.deleteMany({ postId });
 
-    if (post) post.comments = await PostService.populateComments(post._id);
+    // Invalidate caches
+    await redisClient.del('posts:all');
+    await redisClient.del(`posts:user:${userId}`);
+    await redisClient.del(`post:${postId}`);
 
     return post;
   }
 
-
-  static async updatePost(postId, userId, updateData) {
-    return await Post.findOneAndUpdate(
-      { _id: postId, userId },
-      updateData,
-      { new: true, runValidators: true }
-    );
-  }
-
-  static async deletePost(postId, userId) {
-    return await Post.findOneAndDelete({ _id: postId, userId });
-  }
 static async _populateLikesAndComments(posts) {
   for (let post of posts) {
-    post.likesCount = post.likes?.length || 0;
-
     if (post.likes && post.likes.length > 0) {
-      let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const userIds = post.likes.map(l => l.userId);
+      const existingUsers = await PostRepository.findUsersByIds(userIds);
 
-      const userIds = sortedLikes.map(l => l.userId);
-      const existingUsers = await User.find({ _id: { $in: userIds } }).select('username profilePic');
+      // Keep only likes from existing users
+      post.likes = post.likes.filter(like => existingUsers.some(u => u._id.toString() === like.userId.toString()));
+      post.likesCount = post.likes.length;
 
-      sortedLikes = sortedLikes.filter(like => existingUsers.some(u => u._id.toString() === like.userId.toString()));
+      const latestLikes = post.likes
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 2)
+        .map(like => {
+          const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
+          return { username: user.username, profilePic: user.profilePic };
+        });
 
-      const latestLikes = sortedLikes.slice(0, 2);
-
-      post.likesPreview = latestLikes.map(like => {
-        const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
-        return { username: user.username, profilePic: user.profilePic };
-      });
+      post.likesPreview = latestLikes;
     } else {
+      post.likes = [];
+      post.likesCount = 0;
       post.likesPreview = [];
     }
 
-    post.commentCount = await Comment.countDocuments({ postId: post._id });
-
-    delete post.likes;
+    post.commentCount = await PostRepository.countComments(post._id);
   }
 
   return posts;
 }
 
 
-
-
-
-
 }
-
-
 
 module.exports = PostService;
