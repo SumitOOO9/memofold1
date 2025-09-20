@@ -4,29 +4,29 @@ const cache = require("../utils/cache");
 const postRepository = require("../repositories/postRepository")
 
 class UserService {
-  async isUsernameTaken(username, excludeUserId = null) {
+ static async isUsernameTaken(username, excludeUserId = null) {
     const cond = { username };
     if (excludeUserId) cond._id = { $ne: excludeUserId };
     const user = await userRepository.findOne(cond);
     return !!user;
   }
 
-  async isEmailTaken(email, excludeUserId = null) {
+ static async isEmailTaken(email, excludeUserId = null) {
     const cond = { email };
     if (excludeUserId) cond._id = { $ne: excludeUserId };
     const user = await userRepository.findOne(cond);
     return !!user;
   }
 
-  async updateUserFields(userId, userUpdates = {}, session = null) {
+ static async updateUserFields(userId, userUpdates = {}, session = null) {
     return userRepository.updateUserFields(userId, userUpdates, session);
   }
 
-  async updateProfile(userId, profileUpdates = {}, session = null) {
+ static async updateProfile(userId, profileUpdates = {}, session = null) {
     return userRepository.updateProfile(userId, profileUpdates, session);
   }
 
-  async updateUserAndProfileAtomic(userId, { username, email, description } = {}) {
+ static async updateUserAndProfileAtomic(userId, { username, email, description } = {}) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -72,7 +72,7 @@ class UserService {
     }
   }
 
-  async getUserWithProfile(userId) {
+ static async getUserWithProfile(userId) {
     const cached = await cache.get(`user:${userId}`);
     if (cached) {
       return JSON.parse(cached);
