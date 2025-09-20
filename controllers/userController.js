@@ -9,33 +9,21 @@ exports.uploadProfilePic = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "profilePics",
-          public_id: `${req.user.username}_profile`,
-          overwrite: true,
-        },
-        (error, result) => {
-          if (result) resolve(result);
-          else reject(error);
-        }
-      );
 
-      streamifier.createReadStream(req.file.buffer).pipe(stream);
-    });
-
-    const updatedUser = await UserService.updateUserFields(req.user.id, { profilePic: result.secure_url });
+    if (!req.imageUrl) {
+      return res.status(500).json({ message: "Upload failed. Cloudinary did not return URL." });
+    }
+    const updatedUser = await UserService.updateUserFields(req.user.id, { profilePic: req.imageUrl });
 
     res.json({
-      profilePicUrl: updatedUser.profilePic,
-      cloudinaryId: result.public_id
+      profilePicUrl: updatedUser.profilePic
     });
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({ message: "Upload failed", error: error.message });
   }
 };
+
 
 exports.getMe = async (req, res) => {
   try {
