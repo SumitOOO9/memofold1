@@ -31,7 +31,9 @@ class PostService {
     const cacheKey = `posts:all:${limit}:${cursor || 'first'}`;
     // const cached = await redisClient.get(cacheKey);
 
-    // if (cached) return JSON.parse(cached);
+    // // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const query = cursor ? { _id: { $lt: cursor } } : {};
     const posts = await PostRepository.find(query, limit);
@@ -46,7 +48,9 @@ class PostService {
   static async getUserPosts(userId, limit = 10, cursor = null) {
     const cacheKey = `posts:user:${userId}:${limit}:${cursor || 'first'}`;
     const cached = await redisClient.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const query = { userId };
     if (cursor) query._id = { $lt: cursor };
@@ -61,13 +65,29 @@ class PostService {
   static async getPostById(postId) {
     const cacheKey = `post:${postId}`;
     const cached = await redisClient.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const post = await PostRepository.findById(postId);
     if (post) post.comments = await Comment.find({ postId }).lean();
 
     await redisClient.set(cacheKey, JSON.stringify(post), 'EX', 60);
     return post;
+  }
+
+  static async getPostsByUsername(username, limit = 10, cursor = null) {
+    const cacheKey = `posts:username:${username}:${limit}:${cursor || 'first'}`;
+    const cached = await redisClient.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
+    const query = { username };
+    if (cursor) query._id = { $lt: cursor };
+    const posts = await PostRepository.find(query, limit);
+    const populatedPosts = await PostService._populateLikesAndComments(posts);
+    await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
+    return populatedPosts;
   }
 
   static async updatePost(postId, userId, updateData) {

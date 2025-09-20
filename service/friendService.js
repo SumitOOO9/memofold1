@@ -5,7 +5,9 @@ class FriendService {
 static async getFriends(userId, limit = 10, cursor = null) {
   const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
   let cached = await redis.get(cacheKey);
-  if (cached) return JSON.parse(cached);
+  // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
   const user = await FriendRepository.findUserById(userId);
   let friends = user.friends || [];

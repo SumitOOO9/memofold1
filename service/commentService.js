@@ -90,7 +90,9 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
   static async getComments({ postId, limit = 20, skip = 0, sort = '-createdAt' }) {
     const cacheKey = `comments:post:${postId}:${limit}:${skip}:${sort}`;
     const cached = await redisClient.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const comments = await CommentRepository.find({ postId, parentComment: null }, limit, skip, sort);
     const populatedComments = [];
@@ -107,7 +109,9 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
   static async getReplies({ parentCommentId, limit = 10, cursor }) {
     const cacheKey = `replies:comment:${parentCommentId}:${limit}:${cursor || 'first'}`;
     const cached = await redisClient.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const replies = await CommentRepository.findReplies(parentCommentId, limit, cursor);
     const nextCursor = replies.length === limit ? replies[replies.length - 1].createdAt.toISOString() : null;
