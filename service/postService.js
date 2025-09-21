@@ -111,7 +111,7 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
   let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const userIds = sortedLikes.map(l => l.userId);
-  const existingUsers = await PostRepository.findUsersByIds({userIds }).select('username profilePic');
+  const existingUsers = await PostRepository.findUsersByIds({userIds });
   sortedLikes = sortedLikes.filter(l => existingUsers.some(u => u._id.toString() === l.userId.toString()));
 
   if (cursor) {
