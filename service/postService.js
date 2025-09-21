@@ -146,7 +146,7 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
 
       // Send notification to post owner (if not liking own post)
       if (post.userId.toString() !== userId.toString()) {
-        const user = await PostRepository.findUsersByIds(userId).select("username realname profilePic");
+        const user = await PostRepository.findUsersByIds(userId);
         const notification = new Notification({
           receiver: post.userId,
           sender: userId,
