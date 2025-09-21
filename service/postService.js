@@ -101,7 +101,7 @@ class PostService {
     return post;
   }
 static async getPostLikes(postId, limit = 20, cursor = null) {
-  const post = await PostRepository.findById(postId).lean();
+  const post = await PostRepository.findById(postId);
   if (!post) throw new Error("Post not found");
 
   if (!post.likes || post.likes.length === 0) {
