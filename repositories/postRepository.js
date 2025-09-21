@@ -38,7 +38,7 @@ class PostRepository {
   }
 
   static async findUsersByIds(userIds) {
-    return await User.find({ _id: { $in: userIds } }).select('username profilePic');
+    return await User.find({ _id: { $in: userIds } }).select('username realname profilePic');
   }
   static async countPostsByUserId(query) {
     return await Post.countDocuments(query);

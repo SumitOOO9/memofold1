@@ -101,7 +101,7 @@ class PostService {
     return post;
   }
 static async getPostLikes(postId, limit = 20, cursor = null) {
-  const post = await Post.findById(postId).lean();
+  const post = await PostRepository.findById(postId).lean();
   if (!post) throw new Error("Post not found");
 
   if (!post.likes || post.likes.length === 0) {
@@ -111,7 +111,7 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
   let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const userIds = sortedLikes.map(l => l.userId);
-  const existingUsers = await User.find({ _id: { $in: userIds } }).select('username profilePic');
+  const existingUsers = await PostRepository.findUsersByIds({userIds }).select('username profilePic');
   sortedLikes = sortedLikes.filter(l => existingUsers.some(u => u._id.toString() === l.userId.toString()));
 
   if (cursor) {
@@ -134,7 +134,7 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
 
 
  static async likePost(postId, userId, io) {
-    const post = await Post.findById(postId);
+    const post = await PostRepository.findById(postId);
     if (!post) throw new Error("Post not found");
 
     const likeIndex = post.likes.findIndex(like => like.userId.toString() === userId.toString());
@@ -146,7 +146,7 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
 
       // Send notification to post owner (if not liking own post)
       if (post.userId.toString() !== userId.toString()) {
-        const user = await User.findById(userId).select("username realname profilePic");
+        const user = await PostRepository.findUsersByIds(userId).select("username realname profilePic");
         const notification = new Notification({
           receiver: post.userId,
           sender: userId,
