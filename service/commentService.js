@@ -198,8 +198,7 @@ static async toggleLike(commentId, userId, io) {
       await deleteRepliesRecursively(commentId);
       await CommentRepository.delete(commentId, session);
 
-      // Remove comment from post
-      await Post.updateOne({ _id: postId }, { $pull: { comments: commentId } }, { session });
+      await PostRepository.update({ _id: postId }, { $pull: { comments: commentId } }, { session });
 
       await session.commitTransaction();
       session.endSession();
