@@ -29,23 +29,21 @@ class PostService {
     return post;
   }
 
-  static async getAllPosts(limit = 10, cursor = null) {
-    const cacheKey = `posts:all:${limit}:${cursor || 'first'}`;
-    // const cached = await redisClient.get(cacheKey);
+ static async getAllPosts(limit, cursor = null) {
+  
+  // Use cursor-based pagination
+  const query = cursor ? { _id: { $lt: cursor } } : {};
 
-    // // if (cached) {
-    //   return JSON.parse(cached);
-    // }
+  // Fetch posts sorted by newest first
+  const posts = await PostRepository.find(query, limit, '-_id'); 
 
-    const query = cursor ? { _id: { $lt: cursor } } : {};
-    const posts = await PostRepository.find(query, limit);
-    // console.log("Fetched posts from DB:", posts.length);
+  const populatedPosts = await PostService._populateLikesAndComments(posts);
 
-    const populatedPosts = await PostService._populateLikesAndComments(posts);
+  
+  const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
-    await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
-    return populatedPosts;
-  }
+  return { posts: populatedPosts, nextCursor };
+}
 
   static async getUserPosts(userId, limit = 10, cursor = null) {
     const cacheKey = `posts:user:${userId}:${limit}:${cursor || 'first'}`;

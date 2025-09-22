@@ -9,14 +9,22 @@ class PostRepository {
     return await post.save();
   }
 
-  static async find(query = {}, limit = 10, sort = { createdAt: -1 }) {
-    console.log("PostRepository find called with query:", query, "limit:", limit, "sort:", sort);
-    return await Post.find(query)
-      .sort(sort)
-      .limit(limit)
-      .populate('userId', 'username realname profilePic')
-      .lean();
+static async find(query = {}, limit = 10, sort = { createdAt: -1 }) {
+  console.log("PostRepository find called with query:", query, "limit:", limit, "sort:", sort);
+
+  if (typeof sort === 'string') {
+    const order = sort.startsWith('-') ? -1 : 1;
+    const field = sort.replace('-', '');
+    sort = { [field]: order };
   }
+
+  return await Post.find(query)
+    .sort(sort)
+    .limit(limit)
+    .populate('userId', 'username realname profilePic')
+    .lean();
+}
+
 
   static async findById(postId) {
     return await Post.findById(postId)

@@ -87,24 +87,27 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
     return comment;
   }
 
-  static async getComments({ postId, limit = 20, skip = 0, sort = '-createdAt' }) {
-    const cacheKey = `comments:post:${postId}:${limit}:${skip}:${sort}`;
-    const cached = await redisClient.get(cacheKey);
-    // if (cached) {
-    //   return JSON.parse(cached);
-    // }
+static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) {
 
-    const comments = await CommentRepository.find({ postId, parentComment: null }, limit, skip, sort);
-    const populatedComments = [];
 
-    for (let comment of comments) {
-      const populated = await CommentService.populateReplies(comment);
-      if (populated) populatedComments.push(populated);
-    }
-
-    await redisClient.set(cacheKey, JSON.stringify(populatedComments), 'EX', 60); // 60 sec cache
-    return populatedComments;
+  const query = { postId, parentComment: null };
+  if (cursor) {
+    // Cursor pagination using createdAt + _id to avoid duplicates
+    const [field, order] = sort.startsWith('-') ? [sort.slice(1), -1] : [sort, 1];
+    query[field] = order === -1 ? { $lt: new Date(cursor) } : { $gt: new Date(cursor) };
   }
+
+  const comments = await CommentRepository.find(query, limit, 0, sort);
+
+  for (let comment of comments) {
+    const replies = await CommentRepository.findReplies(comment._id, 2); // only top 2 replies
+    comment.replies = replies;
+  }
+
+  const nextCursor = comments.length ? comments[comments.length - 1].createdAt.toISOString() : null;
+  return { comments, nextCursor };
+}
+
 
   static async getReplies({ parentCommentId, limit = 10, cursor }) {
     const cacheKey = `replies:comment:${parentCommentId}:${limit}:${cursor || 'first'}`;
