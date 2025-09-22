@@ -169,7 +169,7 @@ exports.deletePost = async (req, res) => {
         message: "Post not found or no permission" 
       });
     }
-  await Comment.deleteMany({ postId: deletedPost._id });
+  // await Comment.deleteMany({ postId: deletedPost._id });
 
     res.status(200).json({
       success: true,
