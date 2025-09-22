@@ -11,8 +11,10 @@ exports.createComment = async (req, res) => {
       content: req.body.content,
       postId: req.params.postId,
       userId: req.user.id,
-      parentCommentId: req.body.parentCommentId
-    });
+      parentCommentId: req.body.parentCommentId,
+    },
+  req.app.get("io")
+);
 
     const populatedComment = await CommentService.populateReplies(comment);
 
@@ -65,7 +67,7 @@ exports.getReplies = async (req,res) => {
 // Like/unlike a comment
 exports.likeComment = async (req, res) => {
   try {
-    const comment = await CommentService.toggleLike(req.params.commentId, req.user.id);
+    const comment = await CommentService.toggleLike(req.params.commentId, req.user.id, req.app.get("io"));
 
     res.status(200).json({
       success: true,

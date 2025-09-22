@@ -2,12 +2,14 @@ const mongoose = require('mongoose');
 const CommentRepository = require('../repositories/commentRepository');
 const redisClient = require('../utils/cache');
 const PostRepository = require('../repositories/postRepository');
-
+const UserRepository = require('../repositories/UserRepository');
+const NotificationRepository = require('../repositories/notififcationRepository');
 class CommentService {
 
 static async createComment({ content, postId, userId, parentCommentId }, io) {
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
     const [comment] = await CommentRepository.create(
       { content, postId, userId, parentComment: parentCommentId || null }, 
@@ -20,8 +22,8 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
       await CommentRepository.addReply(parentCommentId, comment._id, session);
     }
 
+    // Commit transaction
     await session.commitTransaction();
-    session.endSession();
 
     // Invalidate cache
     await redisClient.del(`comments:post:${postId}`);
@@ -34,15 +36,14 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
       commentCount
     });
 
-    // ---------------------------
-    // Notification to post owner (if not commenting on own post)
-    const post = await Post.findById(postId).select("userId");
+    // Notification
+    const post = await PostRepository.findById(postId); 
     if (post.userId.toString() !== userId.toString()) {
-      const user = await User.findById(userId).select("username realname profilePic");
-      const notification = new Notification({
+      const user = await UserRepository.findById(userId); // use repository
+      const notification = await NotificationRepository.create({
         receiver: post.userId,
         sender: userId,
-        type: "post_comment",
+        type: "comment",
         metadata: {
           username: user.username,
           realname: user.realname,
@@ -61,14 +62,14 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
 
     return comment;
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    // Abort only if transaction is still active
+    try { await session.abortTransaction(); } catch(e) {}
     throw err;
+  } finally {
+    session.endSession();
   }
 }
 
-
-  // Populate replies recursively
   static async populateReplies(comment) {
     if (!comment.content) {
       comment = await CommentRepository.findById(comment._id || comment);
@@ -86,7 +87,6 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
     return comment;
   }
 
-  // Get comments for a post
   static async getComments({ postId, limit = 20, skip = 0, sort = '-createdAt' }) {
     const cacheKey = `comments:post:${postId}:${limit}:${skip}:${sort}`;
     const cached = await redisClient.get(cacheKey);
@@ -136,8 +136,8 @@ static async toggleLike(commentId, userId, io) {
 
   // Notification if liked and not own comment
   if (action === "liked" && comment.userId.toString() !== userId.toString()) {
-    const user = await User.findById(userId).select("username realname profilePic");
-    const notification = new Notification({
+    const user = await UserRepository.findById(userId).select("username realname profilePic");
+    const notification = await NotificationRepository.create({
       receiver: comment.userId,
       sender: userId,
       type: "comment_like",
@@ -156,7 +156,7 @@ static async toggleLike(commentId, userId, io) {
       notification
     });
   } else if (action === "unliked") {
-    await Notification.deleteMany({
+    await NotificationRepository.delete({
       receiver: comment.userId,
       sender: userId,
       type: "comment_like",

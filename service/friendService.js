@@ -1,6 +1,7 @@
 const FriendRepository = require('../repositories/friendRepository');
-const redisClient = require('../utils/cache'); 
-
+const redis = require('../utils/cache'); 
+const NotificatrionRepository = require('../repositories/notififcationRepository');
+const UserRepository = require('../repositories/UserRepository');
 class FriendService {
 static async getFriends(userId, limit = 10, cursor = null) {
   const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
@@ -9,7 +10,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
       return cached;
     }
 
-  const user = await FriendRepository.findUserById(userId);
+  const user = await UserRepository.findById(userId);
   let friends = user.friends || [];
 
   // Sort by _id descending (newest friends first)
@@ -36,8 +37,8 @@ static async getFriends(userId, limit = 10, cursor = null) {
   if (senderUserId.toString() === receiverUserId.toString())
     throw new Error("You cannot send a friend request to yourself");
 
-  const receiver = await FriendRepository.findUserById(receiverUserId);
-  const sender = await FriendRepository.findUserById(senderUserId, "username realname profilePic");
+  const receiver = await  UserRepository.findById(receiverUserId);
+  const sender = await  UserRepository.findById(senderUserId, "username realname profilePic");
   if (!receiver || !sender) throw new Error("User not found");
 
   if (!receiver.friendrequests) receiver.friendrequests = [];
@@ -73,7 +74,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
   await FriendRepository.saveUser(receiver);
 
-  const notification = await FriendRepository.addNotification({
+  const notification = await NotificatrionRepository.create({
     sender: senderUserId,
     receiver: receiverUserId,
     type: "friend_request",
@@ -94,8 +95,8 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
 
  static async respondToFriendRequest(receiverUserId, senderUserId, action, io) {
-  const receiver = await FriendRepository.findUserById(receiverUserId);
-  const sender = await FriendRepository.findUserById(senderUserId);
+  const receiver = await  UserRepository.findById(receiverUserId);
+  const sender = await  UserRepository.findById(senderUserId);
   if (!receiver || !sender) throw new Error("User not found");
 
   if (!receiver.friendrequests) receiver.friendrequests = [];
@@ -128,7 +129,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
     await FriendRepository.saveUser(receiver);
     await FriendRepository.saveUser(sender);
 
-    const notification = await FriendRepository.addNotification({
+    const notification = await NotificatrionRepository.create({
       receiver: senderUserId,
       sender: receiverUserId,
       type: "friend_accept"
@@ -147,7 +148,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
     receiver.friendrequests.splice(requestIndex, 1);
     await FriendRepository.saveUser(receiver);
 
-    await FriendRepository.deleteFriendNotifications(senderUserId, receiverUserId);
+    await NotificatrionRepository.delete(senderUserId, receiverUserId);
 
     return { success: true, message: "Friend request declined" };
   }
@@ -160,8 +161,8 @@ static async removeFriend(userId, friendId, io) {
   if (userId.toString() === friendId.toString())
     throw new Error("Cannot remove yourself");
 
-  const user = await FriendRepository.findUserById(userId);
-  const friend = await FriendRepository.findUserById(friendId);
+  const user = await  UserRepository.findById(userId);
+  const friend = await  UserRepository.findById(friendId);
 
   if (!user || !friend) throw new Error("User not found");
 
@@ -173,7 +174,7 @@ static async removeFriend(userId, friendId, io) {
   await FriendRepository.saveUser(friend);
 
   // Optional: remove related notifications
-  await FriendRepository.deleteFriendNotifications(userId, friendId);
+  await NotificatrionRepository.delete(userId, friendId);
 
   // Emit real-time update (optional)
   if (io) {

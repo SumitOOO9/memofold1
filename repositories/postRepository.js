@@ -22,7 +22,7 @@ class PostRepository {
     return await Post.findById(postId)
       .populate('userId', 'username realname profilePic')
       .populate('likes.userId', 'username realname profilePic')
-      .lean();
+      // .lean();
   }
 
   static async update(query, updateData) {
@@ -37,9 +37,9 @@ class PostRepository {
     return await Comment.countDocuments({ postId });
   }
 
-  static async findUsersByIds(userIds) {
-    return await User.find({ _id: { $in: userIds } }).select('username realname profilePic');
-  }
+  // static async findUsersByIds(userIds) {
+  //   return await User.find({ _id: { $in: userIds } }).select('username realname profilePic');
+  // }
   static async countPostsByUserId(query) {
     return await Post.countDocuments(query);
   }

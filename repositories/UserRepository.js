@@ -2,9 +2,13 @@ const User = require("../models/user");
 const Profile = require("../models/profile");
 
 class UserRepository {
- static async findById(userId) {
-    return User.findById(userId).select("-password");
-  }
+static async findById(userId) {
+  return User.findById(userId).select("-password");
+}
+static async findByIds(userIds = []) {
+  return User.find({ _id: { $in: userIds } }).select("-password").lean();
+}
+
 
  static async findOne(cond) {
     return User.findOne(cond).lean();
