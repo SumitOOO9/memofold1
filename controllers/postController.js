@@ -41,7 +41,7 @@ exports.getPosts = async (req, res) => {
 exports.getMyPosts = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
-    const posts = await PostService.getUserPosts(req.user.id, Number(limit), cursor);
+    const {posts, nextCursor} = await PostService.getUserPosts(req.user.id, Number(limit), cursor);
     res.status(200).json({ success: true, posts });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -51,8 +51,8 @@ exports.getMyPosts = async (req, res) => {
 exports.getPostsByUsername = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
-    const posts = await PostService.getPostsByUsername(req.params.username, Number(limit), cursor);
-    res.status(200).json({ success: true, posts });
+    const {posts, nextCursor} = await PostService.getPostsByUsername(req.params.username, Number(limit), cursor);
+    res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

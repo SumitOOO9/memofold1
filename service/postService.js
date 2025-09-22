@@ -59,15 +59,15 @@ return { posts: populatedPosts, nextCursor };
     await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
       const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
-    return {populatedPosts,nextCursor};
+    return {posts:populatedPosts, nextCursor};
   }
 
   static async getPostById(postId) {
     const cacheKey = `post:${postId}`;
     const cached = await redisClient.get(cacheKey);
-    // if (cached) {
-    //   return JSON.parse(cached);
-    // }
+    if (cached) {
+      return cached;
+    }
 
     const post = await PostRepository.findById(postId);
     if (post) post.comments = await commentRepository.find({ postId });
@@ -88,7 +88,7 @@ return { posts: populatedPosts, nextCursor };
     const populatedPosts = await PostService._populateLikesAndComments(posts);
     await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
     const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
-    return {populatedPosts,nextCursor};
+    return {posts:populatedPosts,nextCursor};
   }
 
   static async updatePost(postId, userId, updateData) {
