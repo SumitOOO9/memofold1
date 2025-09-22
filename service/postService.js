@@ -228,7 +228,7 @@ static async _populateLikesAndComments(posts) {
   for (let post of posts) {
     if (post.likes && post.likes.length > 0) {
       const userIds = post.likes.map(l => l.userId);
-      const existingUsers = await userRepository.findById(userIds);
+      const existingUsers = await userRepository.findByIds(userIds);
 
       // Keep only likes from existing users
       post.likes = post.likes.filter(like => existingUsers.some(u => u._id.toString() === like.userId.toString()));
