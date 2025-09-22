@@ -31,10 +31,8 @@ class PostService {
 
  static async getAllPosts(limit, cursor = null) {
   
-  // Use cursor-based pagination
   const query = cursor ? { _id: { $lt: cursor } } : {};
 
-  // Fetch posts sorted by newest first
   const posts = await PostRepository.find(query, limit, '-_id'); 
 
   const populatedPosts = await PostService._populateLikesAndComments(posts);
@@ -48,9 +46,9 @@ class PostService {
   static async getUserPosts(userId, limit = 10, cursor = null) {
     const cacheKey = `posts:user:${userId}:${limit}:${cursor || 'first'}`;
     const cached = await redisClient.get(cacheKey);
-    // if (cached) {
-    //   return JSON.parse(cached);
-    // }
+    if (cached) {
+      return cached;
+    }
 
     const query = { userId };
     if (cursor) query._id = { $lt: cursor };
@@ -59,7 +57,9 @@ class PostService {
     const populatedPosts = await PostService._populateLikesAndComments(posts);
 
     await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
-    return populatedPosts;
+      const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
+
+    return {populatedPosts,nextCursor};
   }
 
   static async getPostById(postId) {
@@ -79,15 +79,16 @@ class PostService {
   static async getPostsByUsername(username, limit = 10, cursor = null) {
     const cacheKey = `posts:username:${username}:${limit}:${cursor || 'first'}`;
     const cached = await redisClient.get(cacheKey);
-    // if (cached) {
-    //   return JSON.parse(cached);
-    // }
+    if (cached) {
+      return cached;
+    }
     const query = { username };
     if (cursor) query._id = { $lt: cursor };
     const posts = await PostRepository.find(query, limit);
     const populatedPosts = await PostService._populateLikesAndComments(posts);
     await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
-    return populatedPosts;
+    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
+    return {populatedPosts,nextCursor};
   }
 
   static async updatePost(postId, userId, updateData) {
