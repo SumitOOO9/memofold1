@@ -31,8 +31,8 @@ exports.createPost = async (req, res) => {
 exports.getPosts = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
-    const posts = await PostService.getAllPosts(Number(limit), cursor);
-    res.status(200).json({ success: true, posts });
+    const {posts, nextCursor} = await PostService.getAllPosts(Number(limit), cursor);
+    res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
