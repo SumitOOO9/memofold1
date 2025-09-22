@@ -33,11 +33,14 @@ static async find(query = {}, limit = 10, sort = { createdAt: -1 }) {
       // .lean();
   }
 
-static async update(query, updateData, session = null) {
-  const options = { new: true, runValidators: true };
-  if (session) options.session = session; 
-  return await Post.findOneAndUpdate(query, updateData, options);
+static async update(query, updateData, options = {}) {
+  return await Post.findOneAndUpdate(query, updateData, {
+    new: true,
+    runValidators: true,
+    ...options,  
+  });
 }
+
 
 
 

@@ -178,39 +178,52 @@ static async toggleLike(commentId, userId, io) {
     return comment;
   }
 
-  static async deleteComment(commentId, userId) {
-    const comment = await CommentRepository.findById(commentId);
-    if (!comment) throw new Error('Comment not found');
+ static async deleteComment(commentId, userId, useSession = true) {
+  const comment = await CommentRepository.findById(commentId);
+  if (!comment) throw new Error('Comment not found');
 
-    const postId = comment.postId;
-    const session = await mongoose.startSession();
+  const postId = comment.postId;
+  let session;
+
+  if (useSession) {
+    session = await mongoose.startSession();
     session.startTransaction();
+  }
 
-    try {
-      const deleteRepliesRecursively = async (parentId) => {
-        const replies = await CommentRepository.findReplies(parentId, 1000); // get all
-        for (let r of replies) {
-          await deleteRepliesRecursively(r._id);
-          await CommentRepository.delete(r._id, session);
-        }
-      };
+  try {
+    const deleteRepliesRecursively = async (parentId) => {
+      const replies = await CommentRepository.findReplies(parentId, 1000); // get all
+      for (let r of replies) {
+        await deleteRepliesRecursively(r._id);
+        await CommentRepository.delete(r._id, session);
+      }
+    };
 
-      await deleteRepliesRecursively(commentId);
-      await CommentRepository.delete(commentId, session);
+    await deleteRepliesRecursively(commentId);
+    await CommentRepository.delete(commentId, session);
 
-      await PostRepository.update({ _id: postId }, { $pull: { comments: commentId } }, { session });
+await PostRepository.update(
+  { _id: postId },
+  { $pull: { comments: commentId } },
+  session ? { session } : {}
+);
 
+    if (session) {
       await session.commitTransaction();
       session.endSession();
+    }
 
-      await redisClient.del(`comments:post:${postId}`);
-      return true;
-    } catch (err) {
+    await redisClient.del(`comments:post:${postId}`);
+    return true;
+  } catch (err) {
+    if (session) {
       await session.abortTransaction();
       session.endSession();
-      throw err;
     }
+    throw err;
   }
+}
+
 }
 
 module.exports = CommentService;
