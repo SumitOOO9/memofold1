@@ -80,8 +80,8 @@ class UserService {
 
     const user = await userRepository.findById(userId);
     const profile = await userRepository.findProfile(userId);
-  const postCount = await postRepository.countPostsByUserId({ userId });
-  const friendsCount = user.friends ? user.friends.length : 0;
+    const postCount = await postRepository.countPostsByUserId({ userId });
+    const friendsCount = user.friends ? user.friends.length : 0;
 
     const result = { user, profile, stats:{
       postCount,

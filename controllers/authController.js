@@ -68,7 +68,6 @@ exports.login = async (req, res) => {
       ? { email: email.toLowerCase().trim() }
       : { username: username.trim() };
 
-    // Always fetch from DB to verify password
     const user = await User.findOne(query).select("+password");
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials." });
@@ -90,10 +89,9 @@ exports.login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    // Cache the user object WITHOUT password
     const { password: pwd, ...safeUser } = user.toObject();
     const cacheKey = email ? `user:${email}` : `user:${username}`;
-    await cache.set(cacheKey, safeUser, 3600); 
+     cache.set(cacheKey, safeUser, 3600); 
 
     return res.status(200).json({
       message: "Login successful.",

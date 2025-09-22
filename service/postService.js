@@ -260,8 +260,6 @@ static async _populateLikesAndComments(posts) {
   return posts;
 }
 
-
-
 }
-
+ 
 module.exports = PostService;
