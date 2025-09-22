@@ -30,6 +30,9 @@ class CommentRepository {
   static async delete(commentId, session = null) {
     return await Comment.findByIdAndDelete(commentId, { session });
   }
+  static async deleteManyByPostId(postId) {
+  return Comment.deleteMany({ postId });
+}
 
   static async findReplies(parentCommentId, limit = 10, cursor = null) {
     const query = { parentComment: parentCommentId };

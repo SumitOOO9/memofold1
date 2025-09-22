@@ -1,7 +1,9 @@
 const PostRepository = require('../repositories/postRepository');
 const UploadService = require('./uploadService');
 const redisClient = require('../utils/cache'); 
-
+const userRepository = require('../repositories/UserRepository');
+const commentRepository = require("../repositories/commentRepository")
+const NotificationRepository = require("../repositories/notififcationRepository")
 class PostService {
 
   static async createPost(userId, username, content, base64Image, createdAt) {
@@ -70,7 +72,7 @@ class PostService {
     // }
 
     const post = await PostRepository.findById(postId);
-    if (post) post.comments = await Comment.find({ postId }).lean();
+    if (post) post.comments = await commentRepository.find({ postId });
 
     await redisClient.set(cacheKey, JSON.stringify(post), 'EX', 60);
     return post;
@@ -110,10 +112,16 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
 
   let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const userIds = sortedLikes.map(l => l.userId);
-  const existingUsers = await PostRepository.findUsersByIds({userIds });
-  sortedLikes = sortedLikes.filter(l => existingUsers.some(u => u._id.toString() === l.userId.toString()));
+const userIds = sortedLikes.map(like => like.userId._id ? like.userId._id : like.userId);
+// console.log("User IDs from likes:", userIds);
 
+const existingUsers = await userRepository.findByIds(userIds);
+// console.log("Existing users found:", existingUsers);
+sortedLikes = sortedLikes.filter(l => {
+  const likeUserId = l.userId._id ? l.userId._id.toString() : l.userId.toString();
+  return existingUsers.some(u => u._id.toString() === likeUserId);
+});
+  // console.log("Filtered likes after checking existing users:", sortedLikes.length);
   if (cursor) {
     const cursorIndex = sortedLikes.findIndex(l => l.userId.toString() === cursor);
     if (cursorIndex >= 0) sortedLikes = sortedLikes.slice(cursorIndex + 1);
@@ -122,7 +130,9 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
   const sliced = sortedLikes.slice(0, limit);
 
   const data = sliced.map(like => {
-    const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
+      const likeUserId = like.userId._id ? like.userId._id.toString() : like.userId.toString();
+  const user = existingUsers.find(u => u._id.toString() === likeUserId);
+    // console.log("Mapping like for user:", user ? user: "User not found");
     return { username: user.username, profilePic: user.profilePic };
   });
 
@@ -146,11 +156,11 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
 
       // Send notification to post owner (if not liking own post)
       if (post.userId.toString() !== userId.toString()) {
-        const user = await PostRepository.findUsersByIds(userId);
-        const notification = new Notification({
+        const user = await userRepository.findById(userId);
+        const notification = await NotificationRepository.create({
           receiver: post.userId,
           sender: userId,
-          type: "post_like",
+          type: "like",
           metadata: {
             username: user.username,
             realname: user.realname,
@@ -171,10 +181,10 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
       action = "unliked";
 
       // Remove notification if unliked
-      await Notification.deleteMany({
+      await NotificationRepository.delete({
         receiver: post.userId,
         sender: userId,
-        type: "post_like",
+        type: "like",
         "metadata.postId": post._id
       });
     }
@@ -186,8 +196,14 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
       postId,
       action,
       likesCount: post.likes.length,
-      likesPreview: populatedPost[0].likesPreview
-
+      // likesPreview: populatedPost[0].likesPreview
+      likesPreview: post.likes
+  .slice(-2)       
+  .reverse()       
+  .map(like => ({
+    username: like.userId.username,
+    profilePic: like.userId.profilePic
+  }))
     });
 
     return post;
@@ -198,7 +214,7 @@ static async getPostLikes(postId, limit = 20, cursor = null) {
     if (!post) return null;
 
     // Delete comments
-    await Comment.deleteMany({ postId });
+    await commentRepository.deleteManyByPostId(postId);
 
     // Invalidate caches
     await redisClient.del('posts:all');
@@ -212,7 +228,7 @@ static async _populateLikesAndComments(posts) {
   for (let post of posts) {
     if (post.likes && post.likes.length > 0) {
       const userIds = post.likes.map(l => l.userId);
-      const existingUsers = await PostRepository.findUsersByIds(userIds);
+      const existingUsers = await userRepository.findById(userIds);
 
       // Keep only likes from existing users
       post.likes = post.likes.filter(like => existingUsers.some(u => u._id.toString() === like.userId.toString()));

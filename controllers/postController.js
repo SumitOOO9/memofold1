@@ -38,7 +38,6 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-// ✅ My Posts
 exports.getMyPosts = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
@@ -49,7 +48,6 @@ exports.getMyPosts = async (req, res) => {
   }
 };
 
-// ✅ Posts by Username
 exports.getPostsByUsername = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
