@@ -189,6 +189,10 @@ exports.resetPassword = async (req, res) => {
     await user.save();
 
     await passwordReset.deleteOne({ _id: resetRecord._id });
+    const cacheKeyByEmail = `user:${user.email}`;
+    const cacheKeyByUsername = `user:${user.username}`;
+    await cache.del(cacheKeyByEmail);
+    await cache.del(cacheKeyByUsername);
 
     res
       .status(200)

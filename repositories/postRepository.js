@@ -359,6 +359,12 @@ static async getFeed(limit, cursor = null) {
     return { updatedPost, action: alreadyLiked ? "unliked" : "liked" };
   }
 
+  static async findById(postId) {
+  return Post.findById(postId)
+    .select("_id userId username realname") 
+    .lean();
+}
+
 }
 
 module.exports = PostRepository;
