@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ email: 1 }, { unique: true, sparse: true });
 userSchema.index({ username: 1 }, { unique: true });
+userSchema.index({realname:1});
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

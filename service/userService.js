@@ -104,11 +104,11 @@ class UserService {
    static async searchUsers(query, limit = 10) {
   const cacheKey = `user_search:${query.toLowerCase()}`;
   const cached = await cache.get(cacheKey);
-  if (cached) return JSON.parse(cached);
+  if (cached) return cached;
 
   const results = await userRepository.searchUsers(query, limit);
 
-  await cache.set(cacheKey, JSON.stringify(results), 30); 
+   cache.set(cacheKey, JSON.stringify(results), 30); 
   return results;
 }
 

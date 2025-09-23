@@ -44,22 +44,21 @@ static async findByIds(userIds = []) {
     }
   }
 
-// repo
 static async searchUsers(query, limit = 10) {
-  const regex = new RegExp(`^${query}`, 'i'); // case-insensitive, starts with query
+  const regex = new RegExp(`^${query}`, 'i'); 
   const users = await User.find({
     $or: [
       { username: regex },
-      { fullName: regex } // include fullName if you have this field
+      { realname: regex } 
     ]
   })
   .limit(limit)
-  .select('username fullName profilePic'); // return only needed fields
+  .select('username fullName profilePic'); 
 
   return users.map(user => ({
     userId: user._id.toString(),
     username: user.username,
-    fullName: user.fullName,
+    realname: user.realname,
     profilePic: user.profilePic || ''
   }));
 }
