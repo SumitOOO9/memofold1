@@ -28,7 +28,7 @@ exports.uploadProfilePic = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const data = await UserService.getUserWithProfile(req.user.id);
-    res.json(data);
+    res.status(200).json(data);
   } catch (error) {
     console.error("getMe error:", error);
     res.status(500).json({ message: "User fetch failed", error: error.message });
