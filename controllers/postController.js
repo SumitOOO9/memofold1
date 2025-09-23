@@ -6,8 +6,11 @@ exports.createPost = async (req, res) => {
   try {
     const { content, createdAt, image: base64Image } = req.body;
 
-    if (!content || content.trim() === "" || image === 'null' || !base64Image || base64Image === 'null') {
-      return res.status(400).json({ error: "empty post cannot be created" });
+       const isContentEmpty = !content || content.trim() === "";
+    const isImageEmpty = !base64Image || base64Image === 'null' || base64Image.trim() === "";
+
+    if (isContentEmpty && isImageEmpty) {
+      return res.status(400).json({ error: "Post cannot be created without content or image" });
     }
 
     const post = await PostService.createPost(

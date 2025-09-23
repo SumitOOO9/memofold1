@@ -13,9 +13,10 @@ class PostService {
       imageUrl = await UploadService.processBase64Image(base64Image, userId);
       if (!imageUrl) throw new Error("Invalid image format");
     }
+    const processedContent = content ? content.trim() : "";
 
     const post = await PostRepository.create({
-      content: content.trim(),
+      content: processedContent,
       image: imageUrl,
       userId,
       username,
