@@ -6,14 +6,14 @@ exports.createPost = async (req, res) => {
   try {
     const { content, createdAt, image: base64Image } = req.body;
 
-    if (!content || content.trim() === "" || image === 'null') {
+    if (!content || content.trim() === "" || image === 'null' || !base64Image || base64Image === 'null') {
       return res.status(400).json({ error: "empty post cannot be created" });
     }
 
     const post = await PostService.createPost(
       req.user.id, 
       req.user.username, 
-      content, 
+      content || "", 
       base64Image, 
       createdAt
     );
