@@ -92,7 +92,6 @@ static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) 
 
   const query = { postId, parentComment: null };
   if (cursor) {
-    // Cursor pagination using createdAt + _id to avoid duplicates
     const [field, order] = sort.startsWith('-') ? [sort.slice(1), -1] : [sort, 1];
     query[field] = order === -1 ? { $lt: new Date(cursor) } : { $gt: new Date(cursor) };
   }
@@ -119,7 +118,7 @@ static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) 
     const replies = await CommentRepository.findReplies(parentCommentId, limit, cursor);
     const nextCursor = replies.length === limit ? replies[replies.length - 1].createdAt.toISOString() : null;
 
-    await redisClient.set(cacheKey, JSON.stringify({ replies, nextCursor }), 'EX', 60);
+    // await redisClient.set(cacheKey, JSON.stringify({ replies, nextCursor }), 'EX', 60);
     return { replies, nextCursor };
   }
 

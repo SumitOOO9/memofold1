@@ -22,7 +22,6 @@ class PostService {
       createdAt: createdAt ? new Date(createdAt) : Date.now()
     });
 
-    // Invalidate cached posts
     await redisClient.del('posts:all');
     await redisClient.del(`posts:user:${userId}`);
     

@@ -63,8 +63,9 @@ class UserService {
 
       // Invalidate cache
       await cache.del(`user:${userId}`);
+    const freshData = await this.getUserWithProfile(userId, { forceFresh: true });
 
-      return { updatedUser, updatedProfile };
+      return { updatedUser, updatedProfile, freshData };
     } catch (err) {
       await session.abortTransaction();
       session.endSession();
@@ -72,11 +73,11 @@ class UserService {
     }
   }
 
- static async getUserWithProfile(userId) {
+ static async getUserWithProfile(userId, { forceFresh = false } = {}) {
+    if (!forceFresh) {
     const cached = await cache.get(`user:${userId}`);
-   if (cached) {
-      return cached;
-    }
+    if (cached) cached
+  }
 
     const user = await userRepository.findById(userId);
     const profile = await userRepository.findProfile(userId);
@@ -90,7 +91,7 @@ class UserService {
     // firendList: user.friends || []
   };
 
-    await cache.set(`user:${userId}`, JSON.stringify(result), 300);
+    await cache.set(`user:${userId}`, JSON.stringify(result), 13000);
 
     return result;
   }

@@ -13,20 +13,15 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
       minlength: 3,
       maxlength: 30,
-      index: true, 
     },
     email: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
       lowercase: true,
-      index: true, 
-      sparse: true
     },
     password: {
       type: String,
@@ -64,7 +59,8 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.index({ email: 1, username: 1 });
+userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index({ username: 1 }, { unique: true });
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
@@ -74,7 +70,7 @@ userSchema.pre("save", async function (next) {
 });
 
 userSchema.methods.comparePassword = async function (password) {
-    return await bcrypt.compare(password, this.password)
+    return bcrypt.compare(password, this.password)
 }
 
 

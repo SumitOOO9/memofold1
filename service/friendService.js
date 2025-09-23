@@ -13,10 +13,8 @@ static async getFriends(userId, limit = 10, cursor = null) {
   const user = await UserRepository.findById(userId);
   let friends = user.friends || [];
 
-  // Sort by _id descending (newest friends first)
   friends.sort((a, b) => b._id.toString().localeCompare(a._id.toString()));
 
-  // Apply cursor pagination
   if (cursor) {
     const cursorIndex = friends.findIndex(f => f._id.toString() === cursor);
     if (cursorIndex >= 0) {
@@ -27,7 +25,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
   const paginated = friends.slice(0, limit);
   const nextCursor = paginated.length > 0 ? paginated[paginated.length - 1]._id : null;
 
-  await redis.set(cacheKey, JSON.stringify({ data: paginated, nextCursor }), 'EX', 60);
+  await redis.set(cacheKey, JSON.stringify({ data: paginated, nextCursor }), 'EX', 6000);
 
   return { data: paginated, nextCursor };
 }
@@ -125,6 +123,10 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
     // Remove the friend request from receiver
     receiver.friendrequests.splice(requestIndex, 1);
+    // set the redish so that new updated friend can be fetched
+    await redis.del(`user:${receiverUserId}:friends`);
+    await redis.del(`user:${senderUserId}:friends`);
+
 
     await FriendRepository.saveUser(receiver);
     await FriendRepository.saveUser(sender);
@@ -144,7 +146,6 @@ static async getFriends(userId, limit = 10, cursor = null) {
   }
 
   if (action === "decline") {
-    // Remove request from receiver
     receiver.friendrequests.splice(requestIndex, 1);
     await FriendRepository.saveUser(receiver);
 
