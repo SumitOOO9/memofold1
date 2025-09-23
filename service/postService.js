@@ -84,7 +84,7 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
     // Likes preview (latest 2)
     const lastLikes = updatedPost.likes.slice(-2).reverse();
     const userIds = lastLikes.map(l => l.userId);
-    const users = await UserRepository.findByIds(userIds);
+    const users = await userRepository.findByIds(userIds);
 
     const likesPreview = lastLikes.map(like => {
       const user = users.find(u => u._id.equals(like.userId));
