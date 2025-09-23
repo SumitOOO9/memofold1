@@ -1,3 +1,4 @@
+const { image } = require('../config/cloudinary');
 const PostService = require('../service/postService');
 const UploadService = require('../service/uploadService');
 
@@ -5,8 +6,8 @@ exports.createPost = async (req, res) => {
   try {
     const { content, createdAt, image: base64Image } = req.body;
 
-    if (!content || content.trim() === "") {
-      return res.status(400).json({ error: "Post content cannot be empty" });
+    if (!content || content.trim() === "" || image === 'null') {
+      return res.status(400).json({ error: "empty post cannot be created" });
     }
 
     const post = await PostService.createPost(
