@@ -32,7 +32,7 @@ class PostService {
   
   const query = cursor ? { _id: { $lt: cursor } } : {};
 
-  const posts = await PostRepository.find(query, limit, '-_id'); 
+  const posts = await PostRepository.find(query, limit, { createdAt: -1 }); 
 
   const populatedPosts = await PostService._populateLikesAndComments(posts);
 
