@@ -33,51 +33,35 @@ class PostService {
   
   const query = cursor ? { _id: { $lt: cursor } } : {};
 
-  const posts = await PostRepository.find(query, limit, { createdAt: -1 }); 
-
-  const populatedPosts = await PostService._populateLikesAndComments(posts);
-
+    const posts = await PostRepository.getFeed(limit, cursor);
   
   const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
-return { posts: populatedPosts, nextCursor }; 
+
+return { posts: posts, nextCursor }; 
 }
 
-  static async getUserPosts(userId, limit = 10, cursor = null) {
+static async getUserPosts(userId, limit = 10, cursor = null) {
     const cacheKey = `posts:user:${userId}:${limit}:${cursor || 'first'}`;
     const cached = await redisClient.get(cacheKey);
-    // if (cached) {
-    //   console.log("Returning cached user posts", cached);
-    //   return cached;
-    // }
+    if (cached) return JSON.parse(cached);
 
-    const query = { userId };
-    if (cursor) query._id = { $lt: cursor };
+    const posts = await PostRepository.getUserPosts(userId, limit, cursor);
+    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
-    const posts = await PostRepository.find(query, limit);
-    const populatedPosts = await PostService._populateLikesAndComments(posts);
+    await redisClient.set(cacheKey, JSON.stringify(posts), 'EX', 60);
+    return { posts, nextCursor };
+  }
 
-    await redisClient.set(cacheKey, JSON.stringify(populatedPosts), 'EX', 60);
-      const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
-
-    return {posts:populatedPosts, nextCursor};
+ static async getPostsByUsername(username, limit = 10, cursor = null) {
+    const posts = await PostRepository.getPostsByUsername(username, limit, cursor);
+    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
+    return { posts, nextCursor };
   }
 
   static async getPostById(postId) {
-
-    const post = await PostRepository.findById(postId);
-    if (post) post.comments = await commentRepository.find({ postId });
+    const post = await PostRepository.getPostById(postId);
     return post;
-  }
-
-  static async getPostsByUsername(username, limit = 10, cursor = null) {
-    const query = { username };
-    if (cursor) query._id = { $lt: cursor };
-    const posts = await PostRepository.find(query, limit);
-    console.log("Posts found:", posts);
-    const populatedPosts = await PostService._populateLikesAndComments(posts);
-    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
-    return {posts:populatedPosts,nextCursor};
   }
 
   static async updatePost(postId, userId, updateData) {
@@ -90,118 +74,56 @@ return { posts: populatedPosts, nextCursor };
 
     return post;
   }
-static async getPostLikes(postId, limit = 20, cursor = null) {
-  const post = await PostRepository.findById(postId);
-  if (!post) throw new Error("Post not found");
-
-  if (!post.likes || post.likes.length === 0) {
-    return { data: [], nextCursor: null };
+ static async getPostLikes(postId, limit = 20, cursor = null) {
+    return await PostRepository.getPostLikes(postId, limit, cursor);
   }
 
-  let sortedLikes = [...post.likes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  static async likePost(postId, userId, io) {
+    const { updatedPost, action } = await PostRepository.toggleLike(postId, userId);
 
-const userIds = sortedLikes.map(like => like.userId._id ? like.userId._id : like.userId);
-// console.log("User IDs from likes:", userIds);
+    // Likes preview (latest 2)
+    const lastLikes = updatedPost.likes.slice(-2).reverse();
+    const userIds = lastLikes.map(l => l.userId);
+    const users = await UserRepository.findByIds(userIds);
 
-const existingUsers = await userRepository.findByIds(userIds);
-// console.log("Existing users found:", existingUsers);
-sortedLikes = sortedLikes.filter(l => {
-  const likeUserId = l.userId._id ? l.userId._id.toString() : l.userId.toString();
-  return existingUsers.some(u => u._id.toString() === likeUserId);
-});
-  // console.log("Filtered likes after checking existing users:", sortedLikes.length);
-  if (cursor) {
-    const cursorIndex = sortedLikes.findIndex(l => l.userId.toString() === cursor);
-    if (cursorIndex >= 0) sortedLikes = sortedLikes.slice(cursorIndex + 1);
-  }
+    const likesPreview = lastLikes.map(like => {
+      const user = users.find(u => u._id.equals(like.userId));
+      return user ? { username: user.username, profilePic: user.profilePic } : null;
+    }).filter(Boolean);
 
-  const sliced = sortedLikes.slice(0, limit);
+    // Notifications
+    if (action === "liked" && updatedPost.userId.toString() !== userId.toString()) {
+      const user = await UserRepository.findById(userId);
+      await NotificationRepository.create({
+        receiver: updatedPost.userId,
+        sender: userId,
+        type: "like",
+        metadata: { username: user.username, realname: user.realname, profilePic: user.profilePic, postId }
+      });
 
-  const data = sliced.map(like => {
-      const likeUserId = like.userId._id ? like.userId._id.toString() : like.userId.toString();
-  const user = existingUsers.find(u => u._id.toString() === likeUserId);
-    // console.log("Mapping like for user:", user ? user: "User not found");
-    return { username: user.username, profilePic: user.profilePic };
-  });
+      io.to(updatedPost.userId.toString()).emit("newNotification", {
+        message: `${user.username} liked your post`
+      });
+    } else if (action === "unliked") {
+      await NotificationRepository.delete({
+        receiver: updatedPost.userId,
+        sender: userId,
+        type: "like",
+        "metadata.postId": postId
+      });
+    }
 
-  const nextCursor = sliced.length > 0 ? sliced[sliced.length - 1].userId : null;
-
-  return { data, nextCursor };
-}
-
-
-
-static async likePost(postId, userId, io) {
-  const post = await PostRepository.findById(postId);
-  if (!post) throw new Error("Post not found");
-
-  // Normalize likes: ensure every like has .userId as ObjectId
-  post.likes = post.likes.map(like => ({
-    userId: like.userId._id ? like.userId._id : like.userId,
-    createdAt: like.createdAt || new Date()
-  }));
-
-  // Toggle like
-  const likeIndex = post.likes.findIndex(like => like.userId.toString() === userId.toString());
-  let action = "";
-
-  if (likeIndex === -1) {
-    post.likes.push({ userId, createdAt: new Date() });
-    action = "liked";
-  } else {
-    post.likes.splice(likeIndex, 1);
-    action = "unliked";
-  }
-
-  await post.save();
-
-  // Likes preview (latest 2 likes)
-  const lastLikes = post.likes.slice(-2).reverse();
-  const userIds = lastLikes.map(l => l.userId);
-  const users = await userRepository.findByIds(userIds);
-
-  const likesPreview = lastLikes.map(like => {
-    const user = users.find(u => u._id.toString() === like.userId.toString());
-    return user ? { username: user.username, profilePic: user.profilePic } : null;
-  }).filter(Boolean);
-
-  // Notifications
-  if (action === "liked" && post.userId.toString() !== userId.toString()) {
-    const user = await userRepository.findById(userId);
-    await NotificationRepository.create({
-      receiver: post.userId,
-      sender: userId,
-      type: "like",
-      metadata: {
-        username: user.username,
-        realname: user.realname,
-        profilePic: user.profilePic,
-        postId: post._id
-      }
+    // Emit real-time update
+    io.to(`post:${postId}`).emit("postLiked", {
+      postId,
+      action,
+      likesCount: updatedPost.likes.length,
+      likesPreview
     });
 
-    io.to(post.userId.toString()).emit("newNotification", {
-      message: `${user.username} liked your post`
-    });
-  } else if (action === "unliked") {
-    await NotificationRepository.delete({
-      receiver: post.userId,
-      sender: userId,
-      type: "like",
-      "metadata.postId": post._id
-    });
+    return updatedPost;
   }
 
-  // Emit update
-  io.to(`post:${postId}`).emit("postLiked", {
-    postId,
-    action,
-    likesCount: post.likes.length,
-    likesPreview
-  });
-
-  return post;
-}
 
 
   static async deletePost(postId, userId) {
@@ -220,45 +142,6 @@ static async likePost(postId, userId, io) {
     return post;
   }
 
-static async _populateLikesAndComments(posts) {
-  for (let post of posts) {
-    if (post.likes && post.likes.length > 0) {
-      post.likes = post.likes.map(l => ({
-        userId: l.userId._id ? l.userId._id : l.userId,
-        createdAt: l.createdAt || new Date()
-      }));
-
-      const userIds = post.likes.map(l => l.userId);
-      const existingUsers = await userRepository.findByIds(userIds);
-
-      // Keep only likes from existing users
-      post.likes = post.likes.filter(like =>
-        existingUsers.some(u => u._id.toString() === like.userId.toString())
-      );
-
-      post.likesCount = post.likes.length;
-
-      const latestLikes = post.likes
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(-2)
-        .map(like => {
-          const user = existingUsers.find(u => u._id.toString() === like.userId.toString());
-          return user ? { username: user.username, profilePic: user.profilePic } : null;
-        })
-        .filter(Boolean);
-
-      post.likesPreview = latestLikes;
-    } else {
-      post.likes = [];
-      post.likesCount = 0;
-      post.likesPreview = [];
-    }
-
-    post.commentCount = await PostRepository.countComments(post._id);
-  }
-
-  return posts;
-}
 
 }
  

@@ -56,5 +56,8 @@ postSchema.virtual('likeCount').get(function() {
 
 postSchema.index({ content: 'text' });
 postSchema.index({ createdAt: -1, userId: 1 });
+postSchema.index({ createdAt: -1, _id: -1 });
+postSchema.index({ username: 1, createdAt: -1 });
+
 
 module.exports = mongoose.model('Post', postSchema);
