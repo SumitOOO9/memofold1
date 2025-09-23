@@ -1,4 +1,5 @@
 const PostService = require('../service/postService');
+const UploadService = require('../service/uploadService');
 
 exports.createPost = async (req, res) => {
   try {
