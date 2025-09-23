@@ -81,7 +81,6 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
   static async likePost(postId, userId, io) {
     const { updatedPost, action } = await PostRepository.toggleLike(postId, userId);
 
-    // Likes preview (latest 2)
     const lastLikes = updatedPost.likes.slice(-2).reverse();
     const userIds = lastLikes.map(l => l.userId);
     const users = await userRepository.findByIds(userIds);
@@ -93,7 +92,7 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
 
     // Notifications
     if (action === "liked" && updatedPost.userId.toString() !== userId.toString()) {
-      const user = await UserRepository.findById(userId);
+      const user = await userRepository.findById(userId);
       await NotificationRepository.create({
         receiver: updatedPost.userId,
         sender: userId,

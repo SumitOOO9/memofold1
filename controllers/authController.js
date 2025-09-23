@@ -73,8 +73,8 @@ exports.login = async (req, res) => {
 
     let cachedUser = await cache.get(cacheKey); 
     let user;
-
-    if (Object.keys(cachedUser).length) {
+    console.log("cachedUser",cachedUser);
+    if (cachedUser) {
       user = {
         _id: cachedUser._id,
         username: cachedUser.username,
@@ -83,6 +83,7 @@ exports.login = async (req, res) => {
       };
     } else {
       user = await User.findOne(email ? { email } : { username }).select("+password");
+      console.log("user",user);
       if (!user) return res.status(400).json({ message: "Invalid credentials." });
 
       await cache.set(cacheKey, JSON.stringify({
