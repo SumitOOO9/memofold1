@@ -63,35 +63,36 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
+    const identifier = email || username;
 
-    if ((!email && !username) || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email or username and password are required." });
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Email/username and password are required." });
     }
 
-    const cacheKey = email ? `user:${email}` : `user:${username}`;
+    const cacheKey = `user:${identifier}`;
 
-    let cachedUser = await cache.get(cacheKey);
+    let cachedUser = await cache.get(cacheKey); 
     let user;
 
-    if (cachedUser) {
-      user = cachedUser;
+    if (Object.keys(cachedUser).length) {
+      user = {
+        _id: cachedUser._id,
+        username: cachedUser.username,
+        email: cachedUser.email,
+        password: cachedUser.password
+      };
     } else {
       user = await User.findOne(email ? { email } : { username }).select("+password");
       if (!user) return res.status(400).json({ message: "Invalid credentials." });
 
-      await cache.set(
-        cacheKey,
-        JSON.stringify({
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          password: user.password, 
-        }),
-        "EX",
-        18000
-      );
+      await cache.set(cacheKey, JSON.stringify({
+  _id: user._id.toString(),
+  username: user.username,
+  email: user.email,
+  password: user.password
+}), {
+  EX: 18000 
+});
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -103,7 +104,11 @@ exports.login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    return res.status(200).json({ message: "Login successful.", token });
+    return res.status(200).json({
+      message: "Login successful.",
+      token,
+    });
+
   } catch (err) {
     console.error("❌ Login error:", err);
     return res.status(500).json({ message: "Internal server error during login." });
