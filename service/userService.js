@@ -64,6 +64,11 @@ class UserService {
       // Invalidate cache
       await cache.del(`user:${userId}`);
     const freshData = await this.getUserWithProfile(userId, { forceFresh: true });
+    await userRepository.updateUserIndex(userId, {
+        username: updatedUser.username,
+        fullName: updatedProfile.fullName,
+        profilePic: updatedProfile.profilePic,
+      });
 
       return { updatedUser, updatedProfile, freshData };
     } catch (err) {
@@ -95,6 +100,19 @@ class UserService {
 
     return result;
   }
+
+   static async searchUsers(query, limit = 10) {
+  const cacheKey = `user_search:${query.toLowerCase()}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const results = await userRepository.searchUsers(query, limit);
+
+  await cache.set(cacheKey, JSON.stringify(results), 30); 
+  return results;
+}
+
+
 }
 
 

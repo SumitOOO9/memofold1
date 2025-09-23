@@ -35,6 +35,36 @@ static async findByIds(userIds = []) {
  static async findProfile(userId) {
     return Profile.findOne({ user: userId });
   }
+
+  static async findUserWithProfile(userId){
+    const user = await User.findById(userId).select("profilePic username");
+    return{
+      profilepic: user.profilePic,
+      username: user.username
+    }
+  }
+
+// repo
+static async searchUsers(query, limit = 10) {
+  const regex = new RegExp(`^${query}`, 'i'); // case-insensitive, starts with query
+  const users = await User.find({
+    $or: [
+      { username: regex },
+      { fullName: regex } // include fullName if you have this field
+    ]
+  })
+  .limit(limit)
+  .select('username fullName profilePic'); // return only needed fields
+
+  return users.map(user => ({
+    userId: user._id.toString(),
+    username: user.username,
+    fullName: user.fullName,
+    profilePic: user.profilePic || ''
+  }));
+}
+
+
 }
 
 module.exports = UserRepository;

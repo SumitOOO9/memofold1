@@ -79,3 +79,17 @@ exports.updateUserAndProfile = async (req, res) => {
     res.status(500).json({ success: false, message: "Update failed", error: err.message });
   }
 };
+
+exports.searchUsers = async (req, res) => {
+  const { q, limit } = req.query;
+    if (!q) return res.status(400).json({ message: 'Query is required' });
+
+    try {
+      const results = await UserService.searchUsers(q, parseInt(limit) || 10);
+      res.json(results);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Search failed' });
+    }
+  }
+

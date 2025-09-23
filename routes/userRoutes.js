@@ -6,7 +6,8 @@ const {
   uploadProfilePic, 
   getMe, 
   getUserById, 
-  updateUserAndProfile 
+  updateUserAndProfile, 
+  searchUsers
 } = require("../controllers/userController");
 
 router.post(
@@ -20,7 +21,7 @@ router.get("/me", authenticate, getMe);
 
 router.get("/user/:userId", authenticate, getUserById);
 router.put("/update", authenticate, updateUserAndProfile);
-
+router.get("/search", authenticate, searchUsers)
 
 
 module.exports = router;
