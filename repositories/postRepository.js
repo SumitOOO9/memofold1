@@ -18,7 +18,6 @@ class PostRepository {
       { $sort: { createdAt: -1, _id: -1 } },
       { $limit: limit },
 
-      // Lookup post owner
       {
         $lookup: {
           from: "users",
@@ -29,7 +28,6 @@ class PostRepository {
       },
       { $unwind: "$user" },
 
-      // Likes preview (last 2 likes with user info)
       { $addFields: { likesPreview: { $slice: ["$likes", -2] } } },
       {
         $lookup: {
@@ -40,7 +38,6 @@ class PostRepository {
         }
       },
 
-      // Final projection
       {
         $project: {
           _id: 1,
@@ -68,7 +65,6 @@ class PostRepository {
     ]);
   }
 
-  // 🔹 Get posts by username
   static async getPostsByUsername(username, limit = 10, cursor = null) {
     const matchStage = { username };
     if (cursor) matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
@@ -125,7 +121,6 @@ class PostRepository {
     ]);
   }
 
-  // 🔹 Get single post by ID
   static async getPostById(postId) {
     const postObjId = new mongoose.Types.ObjectId(postId);
 
@@ -225,7 +220,7 @@ class PostRepository {
     return await Post.find(query)
       .sort(sort)
       .limit(limit)
-      .select("userId username realname profilePic content image createdAt likes comments") // projection
+      .select("userId username realname profilePic content image createdAt likes comments") 
       .lean();
   }
 
@@ -239,7 +234,6 @@ static async getFeed(limit, cursor = null) {
     { $sort: { createdAt: -1, _id: -1 } },
     { $limit: limit },
 
-    // 🔹 Lookup post owner (userId → user)
     {
       $lookup: {
         from: "users",
@@ -259,7 +253,6 @@ static async getFeed(limit, cursor = null) {
         commentCount: { $size: "$comments" },
         likesPreview: { $slice: ["$likes", -2] },
 
-        // 🔹 embed user info directly
         userId: {
           _id: "$user._id",
           realname: "$user.realname",
@@ -269,7 +262,6 @@ static async getFeed(limit, cursor = null) {
       }
     },
 
-    // 🔹 Lookup users for like preview
     {
       $lookup: {
         from: "users",

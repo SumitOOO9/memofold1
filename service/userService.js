@@ -81,13 +81,16 @@ class UserService {
  static async getUserWithProfile(userId, { forceFresh = false } = {}) {
     if (!forceFresh) {
     const cached = await cache.get(`user:${userId}`);
+    console.log("cached",cached);
     if (cached) cached
   }
 
-    const user = await userRepository.findById(userId);
-    const profile = await userRepository.findProfile(userId);
-    const postCount = await postRepository.countPostsByUserId({ userId });
-    const friendsCount = user.friends ? user.friends.length : 0;
+    const [user, profile, postCount] = await Promise.all([
+      userRepository.findById(userId),
+      userRepository.findProfile(userId),
+      postRepository.countPostsByUserId({ userId })
+    ])
+    const friendsCount = user.friends?.length || 0;
 
     const result = { user, profile, stats:{
       postCount,

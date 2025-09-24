@@ -97,77 +97,78 @@ static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) 
   }
 
   const comments = await CommentRepository.find(query, limit, 0, sort);
+  const commentIds = comments.map(c => c._id)
 
-  for (let comment of comments) {
-    const replies = await CommentRepository.findReplies(comment._id, 2); // only top 2 replies
-    comment.replies = replies;
-  }
+  const replyCounts = await CommentRepository.countRepliesForComments(commentIds);
+
+  const countMap = {};
+  replyCounts.forEach(rc => (countMap[rc._id.toString()] = rc.count))
+
+  const commentsWithCount = comments.map(c => ({
+    ...c,
+    replyCount: countMap[c._id.toString()] || 0
+  }))
 
   const nextCursor = comments.length ? comments[comments.length - 1].createdAt.toISOString() : null;
-  return { comments, nextCursor };
+  return { comments: commentsWithCount, nextCursor };
 }
 
 
   static async getReplies({ parentCommentId, limit = 10, cursor }) {
-    const cacheKey = `replies:comment:${parentCommentId}:${limit}:${cursor || 'first'}`;
-    const cached = await redisClient.get(cacheKey);
-    // if (cached) {
-    //   return JSON.parse(cached);
-    // }
-
     const replies = await CommentRepository.findReplies(parentCommentId, limit, cursor);
     const nextCursor = replies.length === limit ? replies[replies.length - 1].createdAt.toISOString() : null;
 
-    // await redisClient.set(cacheKey, JSON.stringify({ replies, nextCursor }), 'EX', 60);
+ 
     return { replies, nextCursor };
   }
 
 static async toggleLike(commentId, userId, io) {
-  const comment = await CommentRepository.toggleLike(commentId, userId);
-  await redisClient.del(`comments:post:${comment.postId}`);
+  const { updatedComment, action } = await CommentRepository.toggleLike(commentId, userId);
 
-  let action = comment.likes.some(like => like.userId.toString() === userId.toString()) ? "liked" : "unliked";
-
-  // Emit real-time update
+  // Emit real-time update immediately
   io.to(`comment:${commentId}`).emit("commentLiked", {
     commentId,
-    postId: comment.postId,
+    postId: updatedComment.postId,
     action,
-    likesCount: comment.likes.length
+    likesCount: updatedComment.likes.length
   });
 
-  // Notification if liked and not own comment
-  if (action === "liked" && comment.userId.toString() !== userId.toString()) {
-    const user = await UserRepository.findById(userId).select("username realname profilePic");
-    const notification = await NotificationRepository.create({
-      receiver: comment.userId,
-      sender: userId,
-      type: "comment_like",
-      metadata: {
-        username: user.username,
-        realname: user.realname,
-        profilePic: user.profilePic,
-        postId: comment.postId,
-        commentId: comment._id
-      }
-    });
-    await notification.save();
+  // Async: delete cache and manage notifications
+  (async () => {
+    await redisClient.del(`comments:post:${updatedComment.postId}`);
 
-    io.to(comment.userId.toString()).emit("newNotification", {
-      message: `${user.username} liked your comment`,
-      notification
-    });
-  } else if (action === "unliked") {
-    await NotificationRepository.delete({
-      receiver: comment.userId,
-      sender: userId,
-      type: "comment_like",
-      "metadata.commentId": comment._id
-    });
-  }
+    if (action === "liked" && updatedComment.userId.toString() !== userId.toString()) {
+      const user = await UserRepository.findById(userId)
+      const notification = await NotificationRepository.create({
+        receiver: updatedComment.userId,
+        sender: userId,
+        type: "comment_like",
+        metadata: {
+          username: user.username,
+          realname: user.realname,
+          profilepic: user.profilePic,
+          postId: updatedComment.postId,
+          commentId: updatedComment._id
+        }
+      });
+      await notification.save();
+      io.to(updatedComment.userId.toString()).emit("newNotification", {
+        message: `${user.username} liked your comment`,
+        notification
+      });
+    } else if (action === "unliked") {
+      await NotificationRepository.delete({
+        receiver: updatedComment.userId,
+        sender: userId,
+        type: "comment_like",
+        "metadata.commentId": updatedComment._id
+      });
+    }
+  })();
 
-  return comment;
+  return updatedComment;
 }
+
 
 
   static async updateComment(commentId, userId, content) {

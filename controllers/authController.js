@@ -73,7 +73,7 @@ exports.login = async (req, res) => {
 
     let cachedUser = await cache.get(cacheKey); 
     let user;
-    console.log("cachedUser",cachedUser);
+    // console.log("cachedUser",cachedUser);
     if (cachedUser) {
       user = {
         _id: cachedUser._id,

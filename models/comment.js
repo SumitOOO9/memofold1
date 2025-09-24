@@ -14,6 +14,8 @@ const commentSchema = new mongoose.Schema({
 
 commentSchema.index({ postId: 1, createdAt: -1 });
 commentSchema.index({ userId: 1 });
+commentSchema.index({ parentComment: 1, createdAt: -1 });
+commentSchema.index({ parentComment: 1, _id: -1 });
 
 commentSchema.virtual('author', {
   ref: 'User',
