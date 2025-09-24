@@ -4,8 +4,8 @@ exports.getNotifications = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const cursor = req.query.cursor || null;
-
-    const notifications = await NotificationService.getNotification(req.user._id, limit, cursor);
+    console.log("Controller - Fetching notifications for user:", req.user.id)
+    const notifications = await NotificationService.getNotification(req.user.id, limit, cursor);
 
     const nextCursor = notifications.length === limit
       ? notifications[notifications.length - 1]._id
@@ -21,7 +21,7 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const notificationId = req.params.id;
-    const notif = await NotificationService.markAsRead(notificationId, req.user._id);
+    const notif = await NotificationService.markAsRead(notificationId, req.user.id);
 
     if (!notif) {
       return res.status(404).json({ success: false, message: "Notification not found" });

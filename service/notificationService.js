@@ -5,17 +5,18 @@ class NotificationService {
 
   // Get notifications with cache
   static async getNotification(userId, limit = 10, cursor = null) {
-    const cacheKey = `user:${userId}:notifications`;
+    // const cacheKey = `user:${userId}:notifications`;
 
     // Try fetching from Redis
-    let notifications = await redis.get(cacheKey);
-    if (notifications) return notifications;
-
+    // let notifications = await redis.get(cacheKey);
+    // if (notifications) return notifications;
+    
     // Fetch from DB
-    notifications = await NotificationRepository.findByUser(userId, limit, cursor);
-
+    console.log("Fetching notifications from DB for user:", userId);
+   const notifications = await NotificationRepository.findByUser(userId, limit, cursor);
+    
     // Save in Redis for 1 hour
-    await redis.set(cacheKey, notifications, 3600);
+    // await redis.set(cacheKey, notifications, 3600);
 
     return notifications;
   }

@@ -5,7 +5,7 @@ class NotificationRepository {
   static async findByUser(userId, limit = 10, cursor = null) {
     const query = { receiver: userId };
     if (cursor) query._id = { $lt: cursor };
-
+    console.log("Querying notifications with:", query, userId);
     return await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
