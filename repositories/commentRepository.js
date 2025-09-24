@@ -81,13 +81,17 @@ static async toggleLike(commentId, userId) {
 }
 
 
-  static async addCommentToPost(postId, commentId, session = null) {
-    return await Post.updateOne(
-      { _id: postId },
-      { $push: { comments: commentId } },
-      { session }
-    );
-  }
+static async addCommentToPost(postId, commentId, session = null) {
+  return await Post.findByIdAndUpdate(
+    postId,
+    {
+      $push: { comments: commentId },
+      $inc: { commentCount: 1 }
+    },
+    { new: true, session, select: "commentCount userId" } // return updated doc
+  ).lean();
+}
+
 
   static async addReply(parentCommentId, replyId, session = null) {
     return await Comment.updateOne(
@@ -96,6 +100,16 @@ static async toggleLike(commentId, userId) {
       { session }
     );
   }
+static async updateCommentCount(postId, commentId, session = null) {
+  return await Post.findByIdAndUpdate(
+    postId,
+    {
+      $pull: { comments: commentId },
+      $inc: { commentCount: -1 }
+    },
+    { session, new: true, select: "commentCount" }
+  ).lean();
+}
 
 
 

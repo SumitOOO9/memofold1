@@ -16,7 +16,7 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
       session
     );
 
-    await CommentRepository.addCommentToPost(postId, comment._id, session);
+    const post = await CommentRepository.addCommentToPost(postId, comment._id, session);
 
     if (parentCommentId) {
       await CommentRepository.addReply(parentCommentId, comment._id, session);
@@ -29,16 +29,14 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
     await redisClient.del(`comments:post:${postId}`);
     if (parentCommentId) await redisClient.del(`replies:comment:${parentCommentId}`);
 
-    const commentCount = await PostRepository.countComments(postId);
-    io.to(`post:${postId}`).emit("newComment", {
-      comment,
-      parentCommentId,
-      commentCount
-    });
-
+io.to(`post:${postId}`).emit("newComment", {
+  comment,
+  parentCommentId,
+  commentCount: post.commentCount
+});
     // Notification
-    const post = await PostRepository.findById(postId); 
-    if (post.userId.toString() !== userId.toString()) {
+    // const post = await PostRepository.findById(postId); 
+    if (post.userId.toString() !== userId.toString())  {
       const user = await UserRepository.findById(userId); // use repository
       const notification = await NotificationRepository.create({
         receiver: post.userId,
@@ -52,8 +50,6 @@ static async createComment({ content, postId, userId, parentCommentId }, io) {
           commentId: comment._id
         }
       });
-      await notification.save();
-
       io.to(post.userId.toString()).emit("newNotification", {
         message: `${user.username} commented on your post`,
         notification
@@ -201,14 +197,11 @@ static async toggleLike(commentId, userId, io) {
 
     await deleteRepliesRecursively(commentId);
     await CommentRepository.delete(commentId, session);
+    await CommentRepository.updateCommentCount(postId, commentId, session);
 
-await PostRepository.update(
-  { _id: postId },
-  { $pull: { comments: commentId } },
-  session ? { session } : {}
-);
 
-    if (session) {
+
+      if (session) {
       await session.commitTransaction();
       session.endSession();
     }
