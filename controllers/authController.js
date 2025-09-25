@@ -123,6 +123,7 @@ exports.forgotPassword = async (req, res) => {
     if (!email) return res.status(400).json({ message: "Email is required." });
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     if (user) {
@@ -132,37 +133,20 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000), 
       });
 
-      // Get detailed email sending result
-      const emailResult = await sendVerificationCode(email, code);
-      
-      if (!emailResult.success) {
-        console.error('Email sending failed with details:', emailResult.error);
-        
-        if (process.env.NODE_ENV === 'development') {
-          return res.status(500).json({ 
-            success: false, 
-            message: "Failed to send verification code.",
-            error: emailResult.error.message || emailResult.error
-          });
-        } else {
-          // Generic message in production
-          return res.status(500).json({ 
-            success: false, 
-            message: "Failed to send verification code. Please try again." 
-          });
-        }
-      }
+  sendVerificationCode(email, code).catch(err => console.error('Email error:', err));
     }
 
-    res.status(200).json({
-      success: true,
-      message: "If the email exists, a reset code has been sent.",
-    });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "If the email exists, a reset code has been sent.",
+      });
   } catch (error) {
     console.error("Forgot password error:", error);
-    res.status(500).json({ 
-      message: "Server error during password reset request." 
-    });
+    res
+      .status(500)
+      .json({ message: "Server error during password reset request." });
   }
 };
 
