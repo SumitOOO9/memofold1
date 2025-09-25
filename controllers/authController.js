@@ -133,7 +133,7 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000), 
       });
 
-      await sendVerificationCode(email, code);
+  sendVerificationCode(email, code).catch(err => console.error('Email error:', err));
     }
 
     res
