@@ -133,8 +133,16 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000), 
       });
 
-  sendVerificationCode(email, code).catch(err => console.error('Email error:', err));
+      const emailSent = await sendVerificationCode(email, code);
+      
+      if (!emailSent) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to send verification code. Please try again." 
+        });
+      }
     }
+      
 
     res
       .status(200)
