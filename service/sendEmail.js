@@ -2,23 +2,23 @@ const nodemailer = require("nodemailer");
 
 const sendVerificationCode = async (email, code) => {
   try {
-    // Better Gmail configuration for production
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
-      secure: false, // true for 465, false for other ports
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
       },
       tls: {
-        rejectUnauthorized: false // Important for some production environments
+        rejectUnauthorized: false
       }
     });
 
-    // Verify connection configuration
+    // Test connection first
+    console.log('Testing SMTP connection...');
     await transporter.verify();
-    console.log('SMTP connection verified');
+    console.log('SMTP connection verified successfully');
 
     const message = `
       <h2>Password Reset Verification Code</h2>
@@ -28,21 +28,34 @@ const sendVerificationCode = async (email, code) => {
     `;
 
     const mailOptions = {
-      from: `"Testing" <${process.env.EMAIL_USER}>`,
+      from: `"Your App Name" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Password Reset Verification Code',
       html: message,
-      // Add text version for better deliverability
       text: `Your password reset verification code is: ${code}. This code will expire in 10 minutes.`
     };
 
+    console.log('Sending email to:', email);
     const result = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', result.messageId);
-    return true;
+    console.log('Email sent successfully. Message ID:', result.messageId);
+    
+    return {
+      success: true,
+      messageId: result.messageId
+    };
     
   } catch (error) {
-    console.error('Email sending error details:', error);
-    return false;
+    console.error('=== EMAIL ERROR DETAILS ===');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error command:', error.command);
+    console.error('Stack trace:', error.stack);
+    console.error('=== END EMAIL ERROR ===');
+    
+    return {
+      success: false,
+      error: error
+    };
   }
 };
 
