@@ -3,13 +3,17 @@ const nodemailer = require("nodemailer");
 const sendVerificationCode = async (email, code) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'Gmail',
+      service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
-      }
+      },
+      tls: {
+        rejectUnauthorized: false           // avoids some TLS errors in production
+      },
+      connectionTimeout: 10000              // 10 seconds timeout
     });
-    
+
     const message = `
       <h2>Password Reset Verification Code</h2>
       <p>Your verification code is: <strong>${code}</strong></p>
