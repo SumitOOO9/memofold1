@@ -3,7 +3,8 @@ const UploadService = require('./uploadService');
 const redisClient = require('../utils/cache'); 
 const userRepository = require('../repositories/UserRepository');
 const commentRepository = require("../repositories/commentRepository")
-const NotificationRepository = require("../repositories/notififcationRepository")
+const NotificationRepository = require("../repositories/notififcationRepository");
+const  mongoose  = require('mongoose');
 class PostService {
 
   static async createPost(userId, username, content, base64Image, createdAt) {
@@ -97,7 +98,7 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
         receiver: updatedPost.userId,
         sender: userId,
         type: "like",
-        postId: postId,
+        postid: new mongoose.Types.ObjectId(postId),
         metadata: { username: user.username, realname: user.realname, profilePic: user.profilePic, }
       });
 

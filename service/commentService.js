@@ -42,7 +42,7 @@ io.to(`post:${postId}`).emit("newComment", {
         receiver: post.userId,
         sender: userId,
         type: "comment",
-        postId: postId,
+        postid: new mongoose.Types.ObjectId(postId),
         metadata: {
           username: user.username,
           realname: user.realname,

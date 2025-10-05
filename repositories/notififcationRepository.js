@@ -11,7 +11,7 @@ class NotificationRepository {
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate('sender', 'username profilePic realname')
-      .populate('postid', 'title content')
+      .populate('postid')
       .lean();
   }
 
@@ -24,6 +24,7 @@ class NotificationRepository {
   }
 
   static async create(notificationData) {
+    console.log("notificationData", notificationData);
     const notif = new Notification(notificationData);
     return await notif.save();
   }
