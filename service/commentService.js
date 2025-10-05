@@ -42,11 +42,11 @@ io.to(`post:${postId}`).emit("newComment", {
         receiver: post.userId,
         sender: userId,
         type: "comment",
+        postId: postId,
         metadata: {
           username: user.username,
           realname: user.realname,
           profilePic: user.profilePic,
-          postId: postId,
           commentId: comment._id
         }
       });
