@@ -5,11 +5,13 @@ class NotificationRepository {
   static async findByUser(userId, limit = 10, cursor = null) {
     const query = { receiver: userId };
     if (cursor) query._id = { $lt: cursor };
-    console.log("Querying notifications with:", query, userId);
+    // console.log("Querying notifications with:", query, userId);
+    // console.log("notification", await Notification.find(query))
     return await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate('sender', 'username profilePic realname')
+      .populate('postid', 'title content')
       .lean();
   }
 
