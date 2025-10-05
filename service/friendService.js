@@ -70,7 +70,16 @@ static async getFriends(userId, limit = 10, cursor = null) {
     profilePic: sender.profilePic
   });
 
+    sender.sentrequests.push({
+    to: receiverUserId,
+    username: receiver.username,
+    realname: receiver.realname,
+    profilePic: receiver.profilePic
+  });
+
   await FriendRepository.saveUser(receiver);
+  await FriendRepository.saveUser(sender);
+
 
   const notification = await NotificatrionRepository.create({
     sender: senderUserId,
@@ -102,6 +111,8 @@ static async getFriends(userId, limit = 10, cursor = null) {
   const requestIndex = receiver.friendrequests.findIndex(
     req => req.from?.toString() === senderUserId.toString() && req.status === "pending"
   );
+    const sentIndex = sender.sentrequests.findIndex(r => r.to?.toString() === receiverUserId.toString());
+
   if (requestIndex === -1) throw new Error("No pending friend request from this user");
 
   const request = receiver.friendrequests[requestIndex];
@@ -123,6 +134,8 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
     // Remove the friend request from receiver
     receiver.friendrequests.splice(requestIndex, 1);
+        if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+
     // set the redish so that new updated friend can be fetched
     await redis.del(`user:${receiverUserId}:friends`);
     await redis.del(`user:${senderUserId}:friends`);
@@ -147,6 +160,8 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
   if (action === "decline") {
     receiver.friendrequests.splice(requestIndex, 1);
+        if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+
     await FriendRepository.saveUser(receiver);
 
     await NotificatrionRepository.delete(senderUserId, receiverUserId);

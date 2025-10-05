@@ -54,7 +54,17 @@ const userSchema = new mongoose.Schema(
         }
       ],
       default: []
-    }
+    },
+    sentrequests: [
+  {
+    to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    status: { type: String, enum: ['pending', 'accepted', 'declined'], default: 'pending' },
+    username: String,
+    realname: String,
+    profilePic: String
+  }
+]
+
   },
   { timestamps: true }
 );
