@@ -29,6 +29,7 @@ class UserService {
  static async updateUserAndProfileAtomic(userId, { username, email, description } = {}) {
     const session = await mongoose.startSession();
     session.startTransaction();
+      let committed = false;
     try {
       const userUpdates = {};
       const profileUpdates = {};
@@ -59,6 +60,7 @@ class UserService {
       ]);
 
       await session.commitTransaction();
+          committed = true;
       session.endSession();
 
       // Invalidate cache
@@ -72,10 +74,12 @@ class UserService {
 
       return { updatedUser, updatedProfile, freshData };
     } catch (err) {
+    if (!committed) {
       await session.abortTransaction();
-      session.endSession();
-      throw err;
     }
+    session.endSession();
+    throw err;
+  }
   }
 
  static async getUserWithProfile(userId, { forceFresh = false } = {}) {

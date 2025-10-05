@@ -46,7 +46,7 @@ io.to(`post:${postId}`).emit("newComment", {
           username: user.username,
           realname: user.realname,
           profilePic: user.profilePic,
-          postId: post._id,
+          postId: postId,
           commentId: comment._id
         }
       });

@@ -1,6 +1,6 @@
 const User = require("../models/user");
 const Profile = require("../models/profile");
-
+const cache = require("../utils/cache");
 class UserRepository {
 static async findById(userId) {
   return User.findById(userId).select("-password");
@@ -62,8 +62,18 @@ static async searchUsers(query, limit = 10) {
     profilePic: user.profilePic || ''
   }));
 }
-
-
+  static async updateUserIndex(userId, data) {
+    const cacheKey = `user:${userId}`;
+    const cached = await cache.get(cacheKey);
+    let parsed = cached ? cached : {};
+    parsed.user = {
+      ...parsed.user,
+      ...data,
+    };
+    cache.set(cacheKey, JSON.stringify(parsed), 13);
+    return true;
+  }
 }
+
 
 module.exports = UserRepository;

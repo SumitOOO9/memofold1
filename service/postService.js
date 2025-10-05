@@ -97,7 +97,7 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
         receiver: updatedPost.userId,
         sender: userId,
         type: "like",
-        metadata: { username: user.username, realname: user.realname, profilePic: user.profilePic, postId }
+        metadata: { username: user.username, realname: user.realname, profilePic: user.profilePic, postId: postId }
       });
 
       io.to(updatedPost.userId.toString()).emit("newNotification", {
