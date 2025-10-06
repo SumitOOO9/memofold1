@@ -29,7 +29,6 @@ router.put('/update/:id', authenticate, postController.updatePost);
 router.delete('/delete/:id', authenticate, postController.deletePost);
 router.get('/:id/likes', authenticate, postController.getPostLikes);
 router.get('/:id', authenticate, postController.getPostById)
-// Comment routes
 router.post('/:postId/comments', 
   authenticate, 
   validateComment, 
