@@ -15,14 +15,21 @@ class NotificationRepository {
       .lean();
   }
 
-  static async markAsRead(notificationId, userId) {
-    return await Notification.findOneAndUpdate(
-      { _id: notificationId, receiver: userId },
-      { read: true },
-      { new: true }
+  // static async markAsRead(notificationId, userId) {
+  //   return await Notification.findOneAndUpdate(
+  //     { _id: notificationId, receiver: userId },
+  //     { read: true },
+  //     { new: true }
+  //   );
+  // }
+  static async markAsRead(notificationIds, userId) {
+    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
+
+    return await Notification.updateMany(
+      { _id: { $in: ids }, receiver: userId },
+      { $set: { read: true } }
     );
   }
-
   static async create(notificationData) {
     console.log("notificationData", notificationData);
     const notif = new Notification(notificationData);

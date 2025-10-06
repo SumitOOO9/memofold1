@@ -57,7 +57,16 @@ static async getFriends(userId, limit = 10, cursor = null) {
     );
     await FriendRepository.saveUser(receiver);
     await FriendRepository.deleteFriendNotifications(senderUserId, receiverUserId);
+    await NotificatrionRepository.delete({
+      sender: senderUserId,
+      receiver: receiverUserId,
+      type: "friend_request"
+    });
 
+    io.to(receiverUserId.toString()).emit("notificationRemoved", {
+      sender: senderUserId,
+      type: "friend_request"
+    });
     return { success: true, message: "Friend request cancelled" };
   }
 

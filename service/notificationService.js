@@ -22,12 +22,18 @@ class NotificationService {
   }
 
   // Mark notification as read and invalidate cache
-  static async markAsRead(notificationId, userId) {
-    const notif = await NotificationRepository.markAsRead(notificationId, userId);
+  // static async markAsRead(notificationId, userId) {
+  //   const notif = await NotificationRepository.markAsRead(notificationId, userId);
 
-    // Invalidate cache
+  //   // Invalidate cache
+  //   await redis.del(`user:${userId}:notifications`);
+  //   return notif;
+  // }
+    static async markAsRead(notificationIds, userId) {
+    const result = await NotificationRepository.markAsRead(notificationIds, userId);
     await redis.del(`user:${userId}:notifications`);
-    return notif;
+    await redis.del(`user:${userId}:unread_count`);
+    return result;
   }
 
   // Create notification and invalidate cache

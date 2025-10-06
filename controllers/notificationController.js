@@ -20,16 +20,28 @@ exports.getNotifications = async (req, res) => {
 
 exports.markAsRead = async (req, res) => {
   try {
-    const notificationId = req.params.id;
-    const notif = await NotificationService.markAsRead(notificationId, req.user.id);
+    const { id } = req.params; 
+    const { notificationIds } = req.body; 
 
-    if (!notif) {
-      return res.status(404).json({ success: false, message: "Notification not found" });
-    }
+    const ids = notificationIds || id;
 
-    res.json({ success: true, notification: notif });
+    if (!ids)
+      return res.status(400).json({ success: false, message: "No notification IDs provided" });
+
+    const result = await NotificationService.markAsRead(ids, req.user.id);
+    res.json({ success: true, message: "Marked as read", result });
   } catch (err) {
-    console.error("Error marking notification as read:", err);
+    console.error("Error marking notification(s) as read:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const count = await NotificationService.getUnreadCount(req.user.id);
+    res.json({ success: true, count });
+  } catch (err) {
+    console.error("Error fetching unread count:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
