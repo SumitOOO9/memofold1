@@ -5,10 +5,10 @@ const UserRepository = require('../repositories/UserRepository');
 class FriendService {
 static async getFriends(userId, limit = 10, cursor = null) {
   const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
-  let cached = await redis.get(cacheKey);
-  if (cached) {
-      return cached;
-    }
+  // let cached = await redis.get(cacheKey);
+  // if (cached) {
+  //     return cached;
+  //   }
 
   const user = await UserRepository.findById(userId);
   let friends = user.friends || [];

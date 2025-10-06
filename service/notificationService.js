@@ -47,6 +47,18 @@ class NotificationService {
     }
     return result;
   }
+    static async getUnreadCount(userId) {
+    const cacheKey = `user:${userId}:unread_count`;
+    let count = await redis.get(cacheKey);
+
+    if (count !== null) return parseInt(count);
+
+    count = await NotificationRepository.countUnreadByUser(userId);
+
+    await redis.set(cacheKey, count, 300);
+
+    return count;
+  }
 }
 
 module.exports = NotificationService;

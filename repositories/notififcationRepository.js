@@ -32,6 +32,10 @@ class NotificationRepository {
   static async delete(filter) {
     return await Notification.deleteMany(filter);
   }
+
+    static async countUnreadByUser(userId) {
+    return await Notification.countDocuments({ receiver: userId, read: false });
+  }
 }
 
 module.exports = NotificationRepository;
