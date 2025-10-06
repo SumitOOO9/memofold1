@@ -106,7 +106,18 @@ exports.getPostForEdit = async (req, res) => {
     });
   }
 };
-
+exports.getPostById = async (req,res) => {
+  try{
+    const id = req.params.id;
+    const post = await PostService.getPostById(id);
+    if(!post){
+      return res.status(404).json({success:false, message: "Post not found"})
+    }
+    res.status(200).json({success:true, post})
+} catch(error){
+  res.status(500).json({success:false, message: error.message})
+}
+}
 exports.getPostLikes = async (req, res) => {
   try {
     const { limit = 20, cursor } = req.query;
