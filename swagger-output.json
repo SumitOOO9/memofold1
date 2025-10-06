@@ -1145,7 +1145,7 @@
         }
       }
     },
-    "/api/notifications/notification/{id}/read": {
+    "/api/notifications/notification/read/{id}": {
       "put": {
         "description": "",
         "parameters": [
