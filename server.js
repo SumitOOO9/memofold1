@@ -11,6 +11,7 @@ const postRoutes = require("./routes/post");
 const userRoutes = require("./routes/userRoutes");
 const friendRoutes = require("./routes/friendRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 // const profileRoutes = require("./routes/profileRoutes");
 
 const connectDb = require("./config/db");
@@ -62,6 +63,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friends", friendRoutes)
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/chat", chatRoutes);
 // app.use("/api/profile", profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
