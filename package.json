@@ -34,6 +34,7 @@
     "multer": "^2.0.1",
     "nodemailer": "^7.0.4",
     "socket.io": "^4.8.1",
+    "stream-chat": "^9.20.3",
     "streamifier": "^0.1.1",
     "swagger-autogen": "^2.23.7",
     "swagger-ui-express": "^5.0.1",
