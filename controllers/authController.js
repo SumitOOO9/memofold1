@@ -1,10 +1,11 @@
+// controllers/authController.js
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const cache = require("../utils/cache");
 const passwordReset = require("../models/passwordReset");
 const { sendVerificationCode } = require("../service/sendEmail");
-const { upsertStreamUser } = require("../lib/stream");
+const { upsertStreamUser, generateStreamToken, ensureStreamUsersExist } = require("../lib/stream");
 
 // Helper: generate JWT
 const generateToken = (user) => {
@@ -16,27 +17,38 @@ const generateToken = (user) => {
 };
 
 // ------------------ REGISTER ------------------
-exports.register = async (req, res) => {
+const register = async (req, res) => {
   try {
     const { realname, username, email, password, profilePic } = req.body;
 
+    if (!realname || !username || !email || !password)
+      return res.status(400).json({ message: "All fields are required." });
+
     // Check for existing user
     const existingUser = await User.findOne({
-      $or: [{ username: username.trim() }, { email: email.trim().toLowerCase() }],
+      $or: [
+        { username: username.trim() },
+        { email: email.trim().toLowerCase() },
+      ],
     });
-    if (existingUser) return res.status(400).json({ message: "Username or email already exists." });
+
+    if (existingUser)
+      return res.status(400).json({ message: "Username or email already exists." });
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new user
     const newUser = new User({
       realname: realname.trim(),
       username: username.trim(),
       email: email.trim().toLowerCase(),
-      password,
+      password: hashedPassword,
       profilePic: profilePic || "",
     });
     await newUser.save();
 
-    // Upsert user in Stream (safe)
+    // Upsert user in Stream
     try {
       await upsertStreamUser({
         id: newUser._id.toString(),
@@ -44,8 +56,8 @@ exports.register = async (req, res) => {
         image: newUser.profilePic || null,
         role: "user",
       });
-    } catch (streamErr) {
-      console.error("❌ Stream upsert failed during registration:", streamErr.message);
+    } catch (err) {
+      console.error("❌ Stream upsert failed during registration:", err.message);
     }
 
     const token = generateToken(newUser);
@@ -68,22 +80,32 @@ exports.register = async (req, res) => {
 };
 
 // ------------------ LOGIN ------------------
-exports.login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
-    const identifier = email || username;
+    const identifier = email?.toLowerCase().trim() || username?.trim();
+
     if (!identifier || !password)
       return res.status(400).json({ message: "Email/username and password are required." });
 
-    // Try to get from cache first
     const cacheKey = `user:${identifier}`;
     let cachedUser = await cache.get(cacheKey);
     let user;
 
     if (cachedUser) {
-      user = JSON.parse(cachedUser);
-    } else {
-      user = await User.findOne(email ? { email } : { username }).select("+password");
+      try {
+        user = JSON.parse(cachedUser);
+      } catch {
+        user = null;
+      }
+    }
+
+    if (!user) {
+      const query = email
+        ? { email: identifier }
+        : { username: identifier };
+
+      user = await User.findOne(query).select("+password");
       if (!user) return res.status(400).json({ message: "Invalid credentials." });
 
       await cache.set(
@@ -93,16 +115,21 @@ exports.login = async (req, res) => {
           username: user.username,
           email: user.email,
           password: user.password,
+          realname: user.realname,
+          profilePic: user.profilePic || "",
         }),
-        { EX: 18000 }
+        { EX: 18000 } // 5 hours
       );
+    } else {
+      // Fetch full user from DB to get password
+      user = await User.findById(user._id).select("+password");
     }
 
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
-    // Upsert in Stream (safe)
+    // Upsert in Stream
     try {
       await upsertStreamUser({
         id: user._id.toString(),
@@ -110,8 +137,8 @@ exports.login = async (req, res) => {
         image: user.profilePic || null,
         role: "user",
       });
-    } catch (streamErr) {
-      console.error("❌ Stream upsert failed during login:", streamErr.message);
+    } catch (err) {
+      console.error("❌ Stream upsert failed during login:", err.message);
     }
 
     const token = generateToken(user);
@@ -134,7 +161,7 @@ exports.login = async (req, res) => {
 };
 
 // ------------------ FORGOT PASSWORD ------------------
-exports.forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required." });
@@ -149,7 +176,9 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       });
 
-      sendVerificationCode(email, code).catch((err) => console.error("Email error:", err.message));
+      sendVerificationCode(email, code).catch((err) =>
+        console.error("Email error:", err.message)
+      );
     }
 
     res.status(200).json({
@@ -163,7 +192,7 @@ exports.forgotPassword = async (req, res) => {
 };
 
 // ------------------ RESET PASSWORD ------------------
-exports.resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
     if (!email || !code || !newPassword)
@@ -182,7 +211,7 @@ exports.resetPassword = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(400).json({ message: "User not found." });
 
-    user.password = newPassword;
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
     await passwordReset.deleteOne({ _id: resetRecord._id });
 
@@ -194,4 +223,50 @@ exports.resetPassword = async (req, res) => {
     console.error("❌ Reset password error:", err.message);
     res.status(500).json({ message: "Server error during password reset." });
   }
+};
+
+// ------------------ STREAM TOKEN ------------------
+const getStreamToken = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id)
+      return res.status(401).json({ message: "Unauthorized: User ID not found" });
+
+    const userId = req.user.id.toString();
+
+    await upsertStreamUser({
+      id: userId,
+      name: req.user.realname || req.user.username || `User-${userId}`,
+      image: req.user.profilePic || null,
+      role: "user",
+    });
+
+    const token = generateStreamToken(userId);
+    res.status(200).json({ token, userId });
+  } catch (err) {
+    console.error("❌ getStreamToken error:", err.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// ------------------ ENSURE STREAM USERS ------------------
+const ensureUsersExist = async (req, res) => {
+  try {
+    const { users } = req.body;
+    if (!users || !users.length) return res.status(400).json({ message: "No users provided" });
+
+    await ensureStreamUsersExist(users);
+    res.status(200).json({ message: "Users ensured in Stream" });
+  } catch (err) {
+    console.error("❌ ensureUsersExist error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  forgotPassword,
+  resetPassword,
+  getStreamToken,
+  ensureUsersExist,
 };
