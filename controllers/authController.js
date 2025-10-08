@@ -1,9 +1,9 @@
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
-const { sendVerificationCode } = require("../service/sendEmail");
-const passwordReset = require("../models/passwordReset");
-const cache = require("../utils/cache");
 const bcrypt = require("bcryptjs");
+const cache = require("../utils/cache");
+const passwordReset = require("../models/passwordReset");
+const { sendVerificationCode } = require("../service/sendEmail");
 const { upsertStreamUser } = require("../lib/stream");
 
 // Helper: generate JWT
@@ -15,17 +15,18 @@ const generateToken = (user) => {
   );
 };
 
-// Register
+// ------------------ REGISTER ------------------
 exports.register = async (req, res) => {
   try {
     const { realname, username, email, password, profilePic } = req.body;
 
+    // Check for existing user
     const existingUser = await User.findOne({
       $or: [{ username: username.trim() }, { email: email.trim().toLowerCase() }],
     });
-    if (existingUser)
-      return res.status(400).json({ message: "Username or email already exists." });
+    if (existingUser) return res.status(400).json({ message: "Username or email already exists." });
 
+    // Create new user
     const newUser = new User({
       realname: realname.trim(),
       username: username.trim(),
@@ -33,10 +34,9 @@ exports.register = async (req, res) => {
       password,
       profilePic: profilePic || "",
     });
-
     await newUser.save();
 
-    // ✅ Upsert user in Stream safely
+    // Upsert user in Stream (safe)
     try {
       await upsertStreamUser({
         id: newUser._id.toString(),
@@ -45,7 +45,7 @@ exports.register = async (req, res) => {
         role: "user",
       });
     } catch (streamErr) {
-      console.error("❌ Stream upsert failed during registration:", streamErr);
+      console.error("❌ Stream upsert failed during registration:", streamErr.message);
     }
 
     const token = generateToken(newUser);
@@ -62,12 +62,12 @@ exports.register = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Register error:", err);
+    console.error("❌ Register error:", err.message);
     return res.status(500).json({ message: "Internal server error during registration." });
   }
 };
 
-// Login
+// ------------------ LOGIN ------------------
 exports.login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
@@ -75,6 +75,7 @@ exports.login = async (req, res) => {
     if (!identifier || !password)
       return res.status(400).json({ message: "Email/username and password are required." });
 
+    // Try to get from cache first
     const cacheKey = `user:${identifier}`;
     let cachedUser = await cache.get(cacheKey);
     let user;
@@ -97,10 +98,11 @@ exports.login = async (req, res) => {
       );
     }
 
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
-    // ✅ Upsert user in Stream safely
+    // Upsert in Stream (safe)
     try {
       await upsertStreamUser({
         id: user._id.toString(),
@@ -109,7 +111,7 @@ exports.login = async (req, res) => {
         role: "user",
       });
     } catch (streamErr) {
-      console.error("❌ Stream upsert failed during login:", streamErr);
+      console.error("❌ Stream upsert failed during login:", streamErr.message);
     }
 
     const token = generateToken(user);
@@ -126,12 +128,12 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Login error:", err);
+    console.error("❌ Login error:", err.message);
     return res.status(500).json({ message: "Internal server error during login." });
   }
 };
 
-// Forgot Password
+// ------------------ FORGOT PASSWORD ------------------
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -147,7 +149,7 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       });
 
-      sendVerificationCode(email, code).catch((err) => console.error("Email error:", err));
+      sendVerificationCode(email, code).catch((err) => console.error("Email error:", err.message));
     }
 
     res.status(200).json({
@@ -155,12 +157,12 @@ exports.forgotPassword = async (req, res) => {
       message: "If the email exists, a reset code has been sent.",
     });
   } catch (err) {
-    console.error("❌ Forgot password error:", err);
+    console.error("❌ Forgot password error:", err.message);
     res.status(500).json({ message: "Server error during password reset request." });
   }
 };
 
-// Reset Password
+// ------------------ RESET PASSWORD ------------------
 exports.resetPassword = async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
@@ -189,7 +191,7 @@ exports.resetPassword = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Password reset successfully." });
   } catch (err) {
-    console.error("❌ Reset password error:", err);
+    console.error("❌ Reset password error:", err.message);
     res.status(500).json({ message: "Server error during password reset." });
   }
 };
