@@ -1,4 +1,3 @@
-// controllers/authController.js
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const { sendVerificationCode } = require("../service/sendEmail");
@@ -7,7 +6,7 @@ const cache = require("../utils/cache");
 const bcrypt = require("bcryptjs");
 const { upsertStreamUser } = require("../lib/stream");
 
-// 📌 Helper: generate JWT
+// Helper: generate JWT
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, username: user.username },
@@ -16,7 +15,7 @@ const generateToken = (user) => {
   );
 };
 
-// 📌 Register
+// Register
 exports.register = async (req, res) => {
   try {
     const { realname, username, email, password, profilePic } = req.body;
@@ -24,10 +23,8 @@ exports.register = async (req, res) => {
     const existingUser = await User.findOne({
       $or: [{ username: username.trim() }, { email: email.trim().toLowerCase() }],
     });
-
-    if (existingUser) {
+    if (existingUser)
       return res.status(400).json({ message: "Username or email already exists." });
-    }
 
     const newUser = new User({
       realname: realname.trim(),
@@ -70,14 +67,13 @@ exports.register = async (req, res) => {
   }
 };
 
-// 📌 Login
+// Login
 exports.login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
     const identifier = email || username;
-    if (!identifier || !password) {
+    if (!identifier || !password)
       return res.status(400).json({ message: "Email/username and password are required." });
-    }
 
     const cacheKey = `user:${identifier}`;
     let cachedUser = await cache.get(cacheKey);
@@ -135,7 +131,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// 📌 Forgot Password
+// Forgot Password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -151,44 +147,35 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       });
 
-      sendVerificationCode(email, code).catch((err) =>
-        console.error("Email error:", err)
-      );
+      sendVerificationCode(email, code).catch((err) => console.error("Email error:", err));
     }
 
     res.status(200).json({
       success: true,
       message: "If the email exists, a reset code has been sent.",
     });
-  } catch (error) {
-    console.error("Forgot password error:", error);
+  } catch (err) {
+    console.error("❌ Forgot password error:", err);
     res.status(500).json({ message: "Server error during password reset request." });
   }
 };
 
-// 📌 Reset Password
+// Reset Password
 exports.resetPassword = async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
-    if (!email || !code || !newPassword) {
-      return res.status(400).json({
-        message: "Email, verification code, and new password are required.",
-      });
-    }
+    if (!email || !code || !newPassword)
+      return res.status(400).json({ message: "Email, verification code, and new password are required." });
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 6)
       return res.status(400).json({ message: "Password must be at least 6 characters." });
-    }
 
     const resetRecord = await passwordReset.findOne({
       email: email.toLowerCase(),
       code,
       expiresAt: { $gt: new Date() },
     });
-
-    if (!resetRecord) {
-      return res.status(400).json({ message: "Invalid or expired verification code." });
-    }
+    if (!resetRecord) return res.status(400).json({ message: "Invalid or expired verification code." });
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(400).json({ message: "User not found." });
@@ -197,13 +184,12 @@ exports.resetPassword = async (req, res) => {
     await user.save();
     await passwordReset.deleteOne({ _id: resetRecord._id });
 
-    // Clear cache
     await cache.del(`user:${user.email}`);
     await cache.del(`user:${user.username}`);
 
     res.status(200).json({ success: true, message: "Password reset successfully." });
-  } catch (error) {
-    console.error("Reset password error:", error);
+  } catch (err) {
+    console.error("❌ Reset password error:", err);
     res.status(500).json({ message: "Server error during password reset." });
   }
 };
