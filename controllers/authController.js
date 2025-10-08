@@ -24,6 +24,7 @@ exports.register = async (req, res) => {
     const existingUser = await User.findOne({
       $or: [{ username: username.trim() }, { email: email.trim().toLowerCase() }],
     });
+
     if (existingUser) {
       return res.status(400).json({ message: "Username or email already exists." });
     }
@@ -38,15 +39,20 @@ exports.register = async (req, res) => {
 
     await newUser.save();
 
-    // ✅ Upsert user in Stream Chat right after registration
-    await upsertStreamUser({
-      id: newUser._id.toString(),
-      name: newUser.realname || newUser.username,
-      image: newUser.profilePic || null,
-      role: "user",
-    });
+    // ✅ Upsert user in Stream safely
+    try {
+      await upsertStreamUser({
+        id: newUser._id.toString(),
+        name: newUser.realname || newUser.username,
+        image: newUser.profilePic || null,
+        role: "user",
+      });
+    } catch (streamErr) {
+      console.error("❌ Stream upsert failed during registration:", streamErr);
+    }
 
     const token = generateToken(newUser);
+
     return res.status(201).json({
       message: "User registered successfully.",
       token,
@@ -78,8 +84,7 @@ exports.login = async (req, res) => {
     let user;
 
     if (cachedUser) {
-      cachedUser = JSON.parse(cachedUser);
-      user = cachedUser;
+      user = JSON.parse(cachedUser);
     } else {
       user = await User.findOne(email ? { email } : { username }).select("+password");
       if (!user) return res.status(400).json({ message: "Invalid credentials." });
@@ -99,16 +104,31 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
-    // ✅ Upsert user in Stream on login too
-    await upsertStreamUser({
-      id: user._id.toString(),
-      name: user.realname || user.username,
-      image: user.profilePic || null,
-      role: "user",
-    });
+    // ✅ Upsert user in Stream safely
+    try {
+      await upsertStreamUser({
+        id: user._id.toString(),
+        name: user.realname || user.username,
+        image: user.profilePic || null,
+        role: "user",
+      });
+    } catch (streamErr) {
+      console.error("❌ Stream upsert failed during login:", streamErr);
+    }
 
     const token = generateToken(user);
-    return res.status(200).json({ message: "Login successful.", token });
+
+    return res.status(200).json({
+      message: "Login successful.",
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        realname: user.realname,
+        email: user.email,
+        profilePic: user.profilePic,
+      },
+    });
   } catch (err) {
     console.error("❌ Login error:", err);
     return res.status(500).json({ message: "Internal server error during login." });
@@ -131,7 +151,9 @@ exports.forgotPassword = async (req, res) => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       });
 
-      sendVerificationCode(email, code).catch((err) => console.error("Email error:", err));
+      sendVerificationCode(email, code).catch((err) =>
+        console.error("Email error:", err)
+      );
     }
 
     res.status(200).json({
@@ -175,6 +197,7 @@ exports.resetPassword = async (req, res) => {
     await user.save();
     await passwordReset.deleteOne({ _id: resetRecord._id });
 
+    // Clear cache
     await cache.del(`user:${user.email}`);
     await cache.del(`user:${user.username}`);
 
