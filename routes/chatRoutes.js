@@ -1,8 +1,11 @@
 const express = require("express");
-const { getStreamToken } = require("../controllers/chatController");
 const { authenticate } = require("../middleware/authMiddleware");
+const { getStreamToken } = require("../controllers/getStreamToken");
+const { ensureUsersExist } = require("../controllers/ensureUsersController");
+
 const router = express.Router();
 
-router.get("/token",authenticate, getStreamToken);
+router.get("/token", authenticate, getStreamToken);
+router.post("/ensureUsersExist", authenticate, ensureUsersExist);
 
 module.exports = router;
