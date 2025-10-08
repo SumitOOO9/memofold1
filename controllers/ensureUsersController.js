@@ -9,7 +9,7 @@ const ensureUsersExist = async (req, res) => {
 
     res.status(200).json({ message: "Users ensured in Stream" });
   } catch (err) {
-    console.error("❌ Error ensuring users exist:", err.message);
+    console.error("❌ ensureUsersExist error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
