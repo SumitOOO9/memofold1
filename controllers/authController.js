@@ -5,6 +5,7 @@ const { sendVerificationCode } = require("../service/sendEmail");
 const passwordReset = require("../models/passwordReset");
 const cache = require("../utils/cache");
 const bcrypt = require("bcryptjs");
+const { upsertStreamUser } = require("../lib/stream");
 
 // 📌 Helper: generate JWT
 const generateToken = (user) => {
@@ -36,8 +37,16 @@ exports.register = async (req, res) => {
     });
 
     await newUser.save();
-    const token = generateToken(newUser);
 
+    // ✅ Upsert user in Stream Chat right after registration
+    await upsertStreamUser({
+      id: newUser._id.toString(),
+      name: newUser.realname || newUser.username,
+      image: newUser.profilePic || null,
+      role: "user",
+    });
+
+    const token = generateToken(newUser);
     return res.status(201).json({
       message: "User registered successfully.",
       token,
@@ -89,6 +98,14 @@ exports.login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
+
+    // ✅ Upsert user in Stream on login too
+    await upsertStreamUser({
+      id: user._id.toString(),
+      name: user.realname || user.username,
+      image: user.profilePic || null,
+      role: "user",
+    });
 
     const token = generateToken(user);
     return res.status(200).json({ message: "Login successful.", token });
