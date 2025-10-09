@@ -12,7 +12,8 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'https://memofold-coral.vercel.app',
   'https://www.memofold.com',
-  'https://memofold.com/',
+  'https://memofold.com',
+  
 ];
 
 
