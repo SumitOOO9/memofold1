@@ -127,7 +127,6 @@ static async getFriends(userId, limit = 10, cursor = null) {
   const request = receiver.friendrequests[requestIndex];
 
   if (action === "accept") {
-    // Add each other as friends
     receiver.friends.addToSet({
       _id: sender._id,
       username: sender.username,
@@ -141,11 +140,10 @@ static async getFriends(userId, limit = 10, cursor = null) {
       realname: receiver.realname
     });
 
-    // Remove the friend request from receiver
     receiver.friendrequests.splice(requestIndex, 1);
         if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+        
 
-    // set the redish so that new updated friend can be fetched
     await redis.del(`user:${receiverUserId}:friends`);
     await redis.del(`user:${senderUserId}:friends`);
 
@@ -153,12 +151,19 @@ static async getFriends(userId, limit = 10, cursor = null) {
     await FriendRepository.saveUser(receiver);
     await FriendRepository.saveUser(sender);
 
+NotificatrionRepository.delete({
+  sender: senderUserId,
+  receiver: receiverUserId,
+  type: "friend_request"
+}).catch(err => console.error("Notification deletion error:", err));
+
+
     const notification = await NotificatrionRepository.create({
       receiver: senderUserId,
       sender: receiverUserId,
       type: "friend_accept"
     });
-
+    
     io.to(senderUserId.toString()).emit("newNotification", {
       message: "Your friend request was accepted",
       notification

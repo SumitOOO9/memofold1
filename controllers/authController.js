@@ -35,8 +35,6 @@ const register = async (req, res) => {
     if (existingUser)
       return res.status(400).json({ message: "Username or email already exists." });
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new user
     const newUser = new User({
@@ -84,12 +82,12 @@ const login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
     const identifier = email?.toLowerCase().trim() || username?.trim();
-
+    console.log("Login attempt for:", username,password);
     if (!identifier || !password)
       return res.status(400).json({ message: "Email/username and password are required." });
 
     const cacheKey = `user:${identifier}`;
-    let cachedUser = await cache.get(cacheKey);
+    let cachedUser = "";
     let user;
 
     if (cachedUser) {
@@ -126,7 +124,7 @@ const login = async (req, res) => {
     }
 
     // Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
+const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
     // Upsert in Stream

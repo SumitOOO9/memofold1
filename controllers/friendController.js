@@ -12,7 +12,7 @@ exports.toggleFriendRequest = async (req, res) => {
 
 exports.respondToRequest = async (req, res) => {
   try {
-    const { action } = req.body; // "accept" or "decline"
+    const { action } = req.body; 
     console.log("Respond to Friend Request Called", req.params.reciverUserId, req.user.id, action, req.body);
     const result = await FriendService.respondToFriendRequest(req.user.id, req.params.reciverUserId, action, req.io);
     res.json(result);
