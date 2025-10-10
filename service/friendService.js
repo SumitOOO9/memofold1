@@ -203,8 +203,12 @@ static async removeFriend(userId, friendId, io) {
   await FriendRepository.saveUser(user);
   await FriendRepository.saveUser(friend);
 
-  // Optional: remove related notifications
-  await NotificatrionRepository.delete(userId, friendId);
+await NotificatrionRepository.delete({
+  $or: [
+    { sender: userId, receiver: friendId },
+    { sender: friendId, receiver: userId }
+  ]
+});
 
   // Emit real-time update (optional)
   if (io) {

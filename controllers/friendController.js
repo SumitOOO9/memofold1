@@ -23,9 +23,9 @@ exports.respondToRequest = async (req, res) => {
 
 exports.removeFriend = async (req, res) => {
   try {
-    const userId = req.user.id; // currently logged-in user
+    const userId = req.user.id;
     const friendId = req.params.friendId;
-
+    console.log("Remove Friend Called", friendId, userId);
     const result = await FriendService.removeFriend(userId, friendId, req.io);
     res.json(result);
   } catch (err) {
