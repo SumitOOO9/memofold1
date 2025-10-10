@@ -41,7 +41,7 @@ const register = async (req, res) => {
       realname: realname.trim(),
       username: username.trim(),
       email: email.trim().toLowerCase(),
-      password: hashedPassword,
+      password: password,
       profilePic: profilePic || "",
     });
     await newUser.save();
