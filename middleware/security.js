@@ -5,13 +5,11 @@ const cors = require('cors');
 function securityMiddleware(app) {
   app.use(helmet());
 
-  app.use(
-    cors({
-      origin: '*', // ✅ allow all origins
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    })
-  );
+  // Allow all origins
+  app.use(cors({
+    origin: true, // or use '*' but true is better for credentials
+    credentials: true,
+  }));
 }
 
 module.exports = securityMiddleware;
