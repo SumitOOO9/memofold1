@@ -41,7 +41,6 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
   if (!receiver.friendrequests) receiver.friendrequests = [];
 
-  // Remove any old declined requests from the same sender
   receiver.friendrequests = receiver.friendrequests.filter(
     req => !(req.from?.toString() === senderUserId.toString() && req.status === "declined")
   );
@@ -55,6 +54,9 @@ static async getFriends(userId, limit = 10, cursor = null) {
     receiver.friendrequests = receiver.friendrequests.filter(
       req => req.from?.toString() !== senderUserId.toString()
     );
+    sender.sentrequests = sender.sentrequests.filter(
+      req => req.to?.toString() !== receiverUserId.toString()
+    )
     await FriendRepository.saveUser(receiver);
     await FriendRepository.deleteFriendNotifications(senderUserId, receiverUserId);
     await NotificatrionRepository.delete({
