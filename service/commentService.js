@@ -105,8 +105,10 @@ static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) 
     replyCount: countMap[c._id.toString()] || 0
   }))
 
+    const totalCount =
+    comments.length + replyCounts.reduce((sum, rc) => sum + rc.count, 0);
   const nextCursor = comments.length ? comments[comments.length - 1].createdAt.toISOString() : null;
-  return { comments: commentsWithCount, nextCursor };
+  return { comments: commentsWithCount, nextCursor, totalCount };
 }
 
 

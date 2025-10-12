@@ -27,14 +27,13 @@ exports.createComment = async (req, res) => {
 
 exports.getComments = async (req, res) => {
   try {
-    const {comments, nextCursor} = await CommentService.getComments({
+    const {comments, totalCount, nextCursor} = await CommentService.getComments({
       postId: req.params.postId,
       limit: req.query.limit || 10,
       cursor: req.query.cursor,
       sort: req.query.sort
     });
-
-    res.status(200).json({ success: true, comments, count: comments.length, nextCursor });
+    res.status(200).json({ success: true, comments, count: totalCount, nextCursor });
   } catch (error) {
     console.error('Error fetching comments:', error);
     res.status(500).json({ success: false, error: error.message });
