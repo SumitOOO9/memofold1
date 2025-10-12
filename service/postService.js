@@ -106,15 +106,14 @@ static async getUserPosts(userId, limit = 10, cursor = null) {
         message: `${user.username} liked your post`
       });
     } else if (action === "unliked") {
-      await NotificationRepository.delete({
-        receiver: updatedPost.userId,
-        sender: userId,
-        type: "like",
-        "metadata.postId": postId
-      });
+       await NotificationRepository.delete({
+    receiver: updatedPost.userId,
+    sender: userId,
+    type: "like",
+    postid: new mongoose.Types.ObjectId(postId)
+  });
     }
 
-    // Emit real-time update
     io.to(`post:${postId}`).emit("postLiked", {
       postId,
       action,
