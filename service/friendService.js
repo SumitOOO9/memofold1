@@ -50,7 +50,6 @@ static async getFriends(userId, limit = 10, cursor = null) {
   );
 
   if (existingRequest) {
-    // Cancel pending request
     receiver.friendrequests = receiver.friendrequests.filter(
       req => req.from?.toString() !== senderUserId.toString()
     );
@@ -58,6 +57,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
       req => req.to?.toString() !== receiverUserId.toString()
     )
     await FriendRepository.saveUser(receiver);
+    await FriendRepository.saveUser(sender);
     await FriendRepository.deleteFriendNotifications(senderUserId, receiverUserId);
     await NotificatrionRepository.delete({
       sender: senderUserId,
@@ -142,7 +142,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
       realname: receiver.realname
     });
 
-    receiver.friendrequests.splice(requestIndex, 1);
+        receiver.friendrequests.splice(requestIndex, 1);
         if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
         
 
