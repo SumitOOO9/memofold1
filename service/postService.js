@@ -39,7 +39,7 @@ class PostService {
   const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
 
-return { posts: posts, nextCursor }; 
+return { posts: posts, nextCursor };  
 }
 
 static async getUserPosts(userId, limit = 10, cursor = null) {
