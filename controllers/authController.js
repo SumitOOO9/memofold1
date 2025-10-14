@@ -209,7 +209,7 @@ const resetPassword = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(400).json({ message: "User not found." });
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = newPassword;
     await user.save();
     await passwordReset.deleteOne({ _id: resetRecord._id });
 
