@@ -51,7 +51,7 @@ class PostRepository {
             $map: {
               input: "$likesPreviewUsers",
               as: "u",
-              in: { username: "$$u.username", profilePic: "$$u.profilePic" }
+              in: { id: "$$u._id",username: "$$u.username", profilePic: "$$u.profilePic" }
             }
           },
           userId: {
@@ -107,7 +107,7 @@ class PostRepository {
             $map: {
               input: "$likesPreviewUsers",
               as: "u",
-              in: { username: "$$u.username", profilePic: "$$u.profilePic" }
+              in: { id: "$$u._id",username: "$$u.username", profilePic: "$$u.profilePic" }
             }
           },
           userId: {
@@ -174,7 +174,7 @@ class PostRepository {
             $map: {
               input: "$likesPreviewUsers",
               as: "u",
-              in: { username: "$$u.username", profilePic: "$$u.profilePic" }
+              in: { id: "$$u._id",username: "$$u.username", profilePic: "$$u.profilePic" }
             }
           },
           userId: {
