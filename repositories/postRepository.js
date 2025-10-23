@@ -67,15 +67,19 @@ class PostRepository {
 
   static async getPostsByUsername(username, limit = 10, cursor = null) {
     const matchStage = { username };
- if (cursor) {
     
-    matchStage.$or = [
-      { createdAt: { $lt: new Date(cursor.createdAt) } },
-      {
-        createdAt: new Date(cursor.createdAt),
-        _id: { $lt: new mongoose.Types.ObjectId(cursor._id) }
-      }
-    ];
+ if (cursor) {
+    // 1. Find the post for the given cursor _id
+    const cursorPost = await Post.findById(cursor).select('createdAt');
+    if (cursorPost) {
+      const cursorDate = cursorPost.createdAt;
+
+      // Filter: posts older than the cursor post
+      matchStage.$or = [
+        { createdAt: { $lt: cursorDate } }, // strictly older
+        { createdAt: cursorDate, _id: { $lt: new mongoose.Types.ObjectId(cursor) } } // same date, smaller _id
+      ];
+    }
   }
     return await Post.aggregate([
       { $match: matchStage },
