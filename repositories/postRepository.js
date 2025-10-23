@@ -67,8 +67,16 @@ class PostRepository {
 
   static async getPostsByUsername(username, limit = 10, cursor = null) {
     const matchStage = { username };
-    if (cursor) matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
-
+ if (cursor) {
+    
+    matchStage.$or = [
+      { createdAt: { $lt: new Date(cursor.createdAt) } },
+      {
+        createdAt: new Date(cursor.createdAt),
+        _id: { $lt: new mongoose.Types.ObjectId(cursor._id) }
+      }
+    ];
+  }
     return await Post.aggregate([
       { $match: matchStage },
       { $sort: { createdAt: -1, _id: -1 } },
