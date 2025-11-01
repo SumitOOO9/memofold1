@@ -100,20 +100,27 @@ static async addCommentToPost(postId, commentId, session = null) {
     );
   }
 static async updateCommentCount(postId, commentIds, session = null, adjustment = 0) {
+  // Remove all deleted comment IDs from post.comments
+  await Post.updateOne(
+    { _id: postId },
+    { $pull: { comments: { $in: Array.isArray(commentIds) ? commentIds : [commentIds] } } },
+    { session }
+  );
+
+  // Recount total comments still linked to the post for accuracy
+  const remainingCount = await Comment.countDocuments({ postId });
+
+  // Update post.commentCount with the exact number
   const updatedPost = await Post.findByIdAndUpdate(
     postId,
-    {
-      $pull: { comments: { $in: Array.isArray(commentIds) ? commentIds : [commentIds] } },
-      $inc: { commentCount: adjustment },
-    },
+    { $set: { commentCount: remainingCount } },
     { session, new: true, select: "commentCount" }
   );
 
   if (!updatedPost) return { commentCount: 0 };
-  if (updatedPost.commentCount < 0) updatedPost.commentCount = 0;
-
   return updatedPost;
 }
+
 
 
 

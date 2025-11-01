@@ -178,8 +178,12 @@ static async toggleLike(commentId, userId, io) {
 
  static async deleteComment(commentId, userId, useSession = true) {
   const comment = await CommentRepository.findById(commentId);
+  console.log("comment to delete",comment);
   if (!comment) throw new Error('Comment not found');
-
+  console.log("comment",comment.userId._id.toString(),userId.toString());
+  if (comment.userId._id.toString() !== userId.toString()) {
+    throw new Error('you are not authorized to delete this comment');
+  }
   const postId = comment.postId;
   let session;
 
