@@ -99,27 +99,30 @@ static async addCommentToPost(postId, commentId, session = null) {
       { session }
     );
   }
-static async updateCommentCount(postId, commentIds, session = null, adjustment = 0) {
-  // Remove all deleted comment IDs from post.comments
+static async updateCommentCount(postId, commentIds, session = null) {
+  // Step 1: Remove the deleted comment(s) from post.comments array
   await Post.updateOne(
     { _id: postId },
     { $pull: { comments: { $in: Array.isArray(commentIds) ? commentIds : [commentIds] } } },
     { session }
   );
 
-  // Recount total comments still linked to the post for accuracy
-  const remainingCount = await Comment.countDocuments({ postId });
+  // Step 2: Recount all comments (top-level + replies) for this post
+  const remainingCount = await Comment.countDocuments({ postId }).session(session);
 
-  // Update post.commentCount with the exact number
+  // Step 3: Update post with accurate commentCount
   const updatedPost = await Post.findByIdAndUpdate(
     postId,
     { $set: { commentCount: remainingCount } },
     { session, new: true, select: "commentCount" }
   );
 
-  if (!updatedPost) return { commentCount: 0 };
-  return updatedPost;
+  console.log("Remaining comment count:", remainingCount);
+  console.log("Updated post after comment count adjustment:", updatedPost);
+
+  return updatedPost || { commentCount: 0 };
 }
+
 
 
 

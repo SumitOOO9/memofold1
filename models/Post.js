@@ -31,6 +31,8 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Comment' 
   }],
+    commentCount: { type: Number, default: 0 },
+  likeCount: { type: Number, default: 0 },
   createdAt: { 
     type: Date, 
     default: Date.now, 
@@ -46,13 +48,13 @@ const postSchema = new mongoose.Schema({
   toObject: { virtuals: true },
 });
 
-postSchema.virtual('commentCount').get(function() {
-  return this.comments ? this.comments.length : 0;
-});
+// postSchema.virtual('commentCount').get(function() {
+//   return this.comments ? this.comments.length : 0;
+// });
 
-postSchema.virtual('likeCount').get(function() {
-  return this.likes ? this.likes.length : 0;
-});
+// postSchema.virtual('likeCount').get(function() {
+//   return this.likes ? this.likes.length : 0;
+// });
 
 postSchema.index({ content: 'text' });
 postSchema.index({ createdAt: -1, userId: 1 });
