@@ -82,7 +82,6 @@ const login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
     const identifier = email?.toLowerCase().trim() || username?.trim();
-    console.log("Login attempt for:", username,password);
     if (!identifier || !password)
       return res.status(400).json({ message: "Email/username and password are required." });
 

@@ -58,7 +58,6 @@ class CommentRepository {
       user: { username: "$user.username", profilepic: "$user.profilePic",id: "$user._id" }
     }}
    ])
-   console.log("replies",replies);
     return replies;
   }
 
@@ -100,16 +99,25 @@ static async addCommentToPost(postId, commentId, session = null) {
       { session }
     );
   }
-static async updateCommentCount(postId, commentId, session = null) {
-  return await Post.findByIdAndUpdate(
+static async updateCommentCount(postId, commentIds, session = null, adjustment = 0) {
+  const updatedPost = await Post.findByIdAndUpdate(
     postId,
     {
-      $pull: { comments: commentId },
-      $inc: { commentCount: -1 }
+      $pull: { comments: { $in: Array.isArray(commentIds) ? commentIds : [commentIds] } },
+      $inc: { commentCount: adjustment },
     },
     { session, new: true, select: "commentCount" }
-  ).lean();
+  );
+
+  if (!updatedPost) return { commentCount: 0 };
+  if (updatedPost.commentCount < 0) updatedPost.commentCount = 0;
+
+  return updatedPost;
 }
+
+
+
+
 
 
 

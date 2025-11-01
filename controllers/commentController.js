@@ -101,11 +101,12 @@ exports.updateComment = async (req, res) => {
 // Delete a comment (and all nested replies)
 exports.deleteComment = async (req, res) => {
   try {
-    await CommentService.deleteComment(req.params.commentId, req.user.id);
+   const result = await CommentService.deleteComment(req.params.commentId, req.user.id);
 
-    res.status(200).json({ success: true, message: 'Comment deleted successfully' });
+    res.status(200).json({ success: true, message: 'Comment deleted successfully', count: result.commentCount });
   } catch (error) {
     console.error('Error deleting comment:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error.message
+ });
   }
 };

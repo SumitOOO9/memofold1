@@ -56,7 +56,7 @@ io.to(`post:${postId}`).emit("newComment", {
       });
     }
 
-    return {comment, count: post.commentCount};
+    return comment;
   } catch (err) {
     // Abort only if transaction is still active
     try { await session.abortTransaction(); } catch(e) {}
@@ -189,18 +189,24 @@ static async toggleLike(commentId, userId, io) {
   }
 
   try {
+        let totalDeleted = 1;
+const allCommentIds = [commentId];
     const deleteRepliesRecursively = async (parentId) => {
       const replies = await CommentRepository.findReplies(parentId, 1000); // get all
       for (let r of replies) {
+                allCommentIds.push(r._id);
+
+                totalDeleted++;
         await deleteRepliesRecursively(r._id);
         await CommentRepository.delete(r._id, session);
       }
-    };
+        console.log("Deleting comment and its replies...",replies);
 
+    };
     await deleteRepliesRecursively(commentId);
     await CommentRepository.delete(commentId, session);
-    const updatedPost = await CommentRepository.updateCommentCount(postId, commentId, session);
-
+const updatedPost = await CommentRepository.updateCommentCount(postId, allCommentIds, session, -totalDeleted);
+    console.log("Updated post after comment deletion:", updatedPost.commentCount);
 
 
       if (session) {
@@ -208,12 +214,13 @@ static async toggleLike(commentId, userId, io) {
       session.endSession();
     }
 
-    await redisClient.del(`comments:post:${postId}`);
-        io.to(`post:${postId}`).emit("commentDeleted", {
-      commentId,
-      postId,
-      commentCount: updatedPost.commentCount
-    });
+      await redisClient.del(`comments:post:${postId}`);
+      // io.to(`post:${postId}`).emit("commentDeleted", {
+      //   commentId,
+      //   postId,
+      //   commentCount: updatedPost.commentCount
+      // });
+    
     return { success: true, commentCount: updatedPost.commentCount };
   } catch (err) {
     if (session) {

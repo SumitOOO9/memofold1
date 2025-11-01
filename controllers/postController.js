@@ -57,7 +57,6 @@ exports.getPostsByUsername = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
     const {posts, nextCursor} = await PostService.getPostsByUsername(req.params.username, Number(limit), cursor);
-    console.log(posts);
     res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
