@@ -13,19 +13,19 @@ class CommentRepository {
       .sort(sort)
       .skip(parseInt(skip))
       .limit(parseInt(limit))
-      .populate({ path: 'userId', select: 'username profilePic realname' })
+      .populate({ path: 'userId', select: 'username profilePic realname userId' })
       .lean();
   }
 
   static async findById(commentId) {
     return await Comment.findById(commentId)
-      .populate({ path: 'userId', select: 'username profilePic realname' })
+      .populate({ path: 'userId', select: 'username profilePic realname userId' })
       .lean();
   }
 
   static async update(query, updateData) {
     return await Comment.findOneAndUpdate(query, updateData, { new: true })
-      .populate({ path: 'userId', select: 'username profilePic realname' });
+      .populate({ path: 'userId', select: 'username profilePic realname userId ' });
   }
 
   static async delete(commentId, session = null) {
@@ -55,7 +55,7 @@ class CommentRepository {
       content: 1,
       createdAt: 1,
       likes: 1,
-      user: { username: "$user.username", profilepic: "$user.profilePic"}
+      user: { username: "$user.username", profilepic: "$user.profilePic",id: "$user._id" }
     }}
    ])
    console.log("replies",replies);

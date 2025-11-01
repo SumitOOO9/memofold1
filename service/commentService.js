@@ -56,7 +56,7 @@ io.to(`post:${postId}`).emit("newComment", {
       });
     }
 
-    return comment;
+    return {comment, count: post.commentCount};
   } catch (err) {
     // Abort only if transaction is still active
     try { await session.abortTransaction(); } catch(e) {}
@@ -199,7 +199,7 @@ static async toggleLike(commentId, userId, io) {
 
     await deleteRepliesRecursively(commentId);
     await CommentRepository.delete(commentId, session);
-    await CommentRepository.updateCommentCount(postId, commentId, session);
+    const updatedPost = await CommentRepository.updateCommentCount(postId, commentId, session);
 
 
 
@@ -209,7 +209,12 @@ static async toggleLike(commentId, userId, io) {
     }
 
     await redisClient.del(`comments:post:${postId}`);
-    return true;
+        io.to(`post:${postId}`).emit("commentDeleted", {
+      commentId,
+      postId,
+      commentCount: updatedPost.commentCount
+    });
+    return { success: true, commentCount: updatedPost.commentCount };
   } catch (err) {
     if (session) {
       await session.abortTransaction();
