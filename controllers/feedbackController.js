@@ -1,24 +1,35 @@
-const Feedback = require("../models/feedback");
+const { sendFeedbackEmail } = require("../utils/sendFeedbackEmail");
 
 exports.submitFeedback = async (req, res) => {
   try {
-    console.log("Incoming feedback data:", req.body); // Debug log
+    const { name, email, message, requestType } = req.body;
 
-    const { name, email, type, message } = req.body;
-
-    // Validation
-    if (!name || !email || !type || !message) {
-      return res.status(400).json({ error: "All fields are required." });
+    if (!message || message.trim() === "") {
+      return res.status(400).json({
+        error: "Feedback message is required",
+      });
     }
 
-    // Save feedback
-    const feedback = new Feedback({ name, email, type, message });
-    await feedback.save();
+    const success = await sendFeedbackEmail({
+      name,
+      email,
+      message,
+      requestType,
+    });
 
-    // Success response
-    res.status(201).json({ msg: "Feedback received successfully." });
-  } catch (err) {
-    console.error("Feedback submission error:", err.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    if (!success) {
+      return res.status(500).json({
+        error: "Failed to send feedback",
+      });
+    }
+
+    res.status(200).json({
+      message: "Thank you for your feedback 🙌",
+    });
+  } catch (error) {
+    console.error("Feedback API error:", error);
+    res.status(500).json({
+      error: "Server error while submitting feedback",
+    });
   }
 };

@@ -217,7 +217,7 @@
         }
       }
     },
-    "/api/feedback/": {
+    "/api/contact/": {
       "post": {
         "description": "",
         "parameters": [
@@ -233,10 +233,10 @@
                 "email": {
                   "example": "any"
                 },
-                "type": {
+                "message": {
                   "example": "any"
                 },
-                "message": {
+                "requestType": {
                   "example": "any"
                 }
               }
@@ -244,8 +244,8 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created"
+          "200": {
+            "description": "OK"
           },
           "400": {
             "description": "Bad Request"

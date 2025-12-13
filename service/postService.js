@@ -7,19 +7,28 @@ const NotificationRepository = require("../repositories/notififcationRepository"
 const  mongoose  = require('mongoose');
 class PostService {
 
-  static async createPost(userId, username, content, base64Image, createdAt) {
+  static async createPost(userId, username, content, base64Image, createdAt, videoUrl) {
     let imageUrl = "";
+    let mediaUrl = "";
+    console.log("Creating post with base64Image:and videoUrl:", videoUrl);
 
     if (base64Image && base64Image.startsWith('data:image/')) {
       imageUrl = await UploadService.processBase64Image(base64Image, userId);
       if (!imageUrl) throw new Error("Invalid image format");
     }
+
+    if(!mediaUrl && videoUrl && typeof videoUrl === "string") {
+      mediaUrl = videoUrl;
+    }
+
+    console.log("Media URL:", mediaUrl);
     const processedContent = content ? content.trim() : "";
 
     const post = await PostRepository.create({
       content: processedContent,
       image: imageUrl,
       userId,
+      videoUrl: mediaUrl,
       username,
       createdAt: createdAt ? new Date(createdAt) : Date.now()
     });
