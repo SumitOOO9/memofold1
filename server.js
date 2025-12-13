@@ -58,7 +58,7 @@ app.get("/api", (req, res) => {
 
 
 app.use("/api/auth", authRoutes);
-app.use("/api/feedback", feedbackRoutes);
+app.use("/api/contact", feedbackRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friends", friendRoutes)

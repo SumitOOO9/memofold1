@@ -4,12 +4,18 @@ const UploadService = require('../service/uploadService');
 
 exports.createPost = async (req, res) => {
   try {
+    // console.log("Request body:", req.body);
     const { content, createdAt, image: base64Image } = req.body;
+    const videoUrl = req.videoUrl || null;
+    console.log("Base64 Image:", base64Image);
+    console.log("Uploaded media URL:", videoUrl);
 
-       const isContentEmpty = !content || content.trim() === "";
-    const isImageEmpty = !base64Image || base64Image === 'null' || base64Image.trim() === "";
+    const isContentEmpty = !content || content.trim() === "";
+ const isMediaEmpty =
+      (!base64Image || base64Image === "null" || base64Image.trim() === "") &&
+      !videoUrl;
 
-    if (isContentEmpty && isImageEmpty) {
+    if (isContentEmpty && isMediaEmpty) {
       return res.status(400).json({ error: "Post cannot be created without content or image" });
     }
 
@@ -18,7 +24,8 @@ exports.createPost = async (req, res) => {
       req.user.username, 
       content || "", 
       base64Image, 
-      createdAt
+      createdAt,
+      videoUrl
     );
 
     res.status(201).json({ message: "Post created successfully", post });
