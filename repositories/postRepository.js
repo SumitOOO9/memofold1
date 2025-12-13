@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Post = require("../models/Post");
 const Comment = require("../models/comment");
 const User = require("../models/user");
+const { video } = require("../config/cloudinary");
 
 class PostRepository {
   static async create(postData) {
@@ -44,6 +45,7 @@ class PostRepository {
           content: 1,
           image: 1,
           createdAt: 1,
+          videoUrl: 1,
           updatedAt: 1,
           likeCount: { $size: "$likes" },
           commentCount: { $size: "$comments" },
@@ -112,6 +114,7 @@ class PostRepository {
           content: 1,
           image: 1,
           createdAt: 1,
+          videoUrl: 1,
           updatedAt: 1,
           likeCount: { $size: "$likes" },
           commentCount: { $size: "$comments" },
@@ -179,6 +182,7 @@ class PostRepository {
           content: 1,
           image: 1,
           createdAt: 1,
+          videoUrl: 1,
           updatedAt: 1,
           likeCount: { $size: "$likes" },
           commentCount: { $size: "$comments" },
@@ -261,6 +265,7 @@ static async getFeed(limit, cursor = null) {
         content: 1,
         image: 1,
         createdAt: 1,
+        videoUrl: 1,
         likeCount: { $size: "$likes" },
         commentCount: { $size: "$comments" },
         likesPreview: { $slice: ["$likes", -2] },
@@ -287,6 +292,7 @@ static async getFeed(limit, cursor = null) {
         content: 1,
         image: 1,
         createdAt: 1,
+        videoUrl: 1,
         likeCount: 1,
         commentCount: 1,
         userId: 1,
