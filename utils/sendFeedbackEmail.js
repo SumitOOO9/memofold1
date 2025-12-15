@@ -10,7 +10,7 @@ const sendFeedbackEmail = async ({
   try {
     const { data, error } = await resend.emails.send({
       from: "MemoFold Feedback <support@memofold.com>",
-      to: email, // 👈 admin email
+      to: email, 
       subject: "📩 New Feedback Received – MemoFold",
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">

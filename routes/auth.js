@@ -7,7 +7,7 @@ const { registerValidation, loginValidation } = require("../validation/userValid
 // User authentication
 router.post("/register", validateMiddleware(registerValidation), authController.register);
 router.post("/signup", validateMiddleware(registerValidation), authController.register);
-router.post("/login", validateMiddleware(loginValidation), authController.login);
+router.post("/login", authController.login);
 
 // Password reset flow
 router.post("/forgot-password", authController.forgotPassword);
