@@ -9,8 +9,9 @@ const sendFeedbackEmail = async ({
 }) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: email,
-      to: "<memofold@gmail.com>", 
+      from: "Feedback Form <support@memofold.com>",
+      to: "memofold@gmail.com", 
+      reply_to: email,
       subject: "📩 New Feedback Received – MemoFold",
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">
