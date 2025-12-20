@@ -334,7 +334,6 @@ static async getFeed(limit, cursor = null) {
       }
 
     pipeline.push(
-      { $limit: limit },
       {
         $lookup: {
           from: "users",
@@ -349,13 +348,15 @@ static async getFeed(limit, cursor = null) {
           _id: "$user._id",
           username: "$user.username",
           profilePic: "$user.profilePic",
-          likedAt: "$likes.createdAt"
+        likedAt: { $ifNull: ["$likes.createdAt", new Date()] } // ensure likedAt always exists
         }
-      }
+      },
+      { $limit: limit }
     );
 
     const likes = await Post.aggregate(pipeline);
-    const nextCursor = likes.length > 0 ? likes[likes.length - 1]._id : null;
+  const nextCursor = likes.length > 0 ? likes[likes.length - 1].likedAt.toISOString() : null;
+   
 
     return { data: likes, nextCursor };
   }
