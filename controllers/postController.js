@@ -45,8 +45,9 @@ exports.createPost = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { limit = 10, cursor } = req.query;
-    const {posts, nextCursor} = await PostService.getAllPosts(Number(limit), cursor);
+    const {posts, nextCursor} = await PostService.getAllPosts(userId, Number(limit), cursor);
     res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -118,7 +119,8 @@ exports.getPostForEdit = async (req, res) => {
 exports.getPostById = async (req,res) => {
   try{
     const id = req.params.id;
-    const post = await PostService.getPostById(id);
+    const userId = req.user.id;
+    const post = await PostService.getPostById(id, userId);
     if(!post){
       return res.status(404).json({success:false, message: "Post not found"})
     }
