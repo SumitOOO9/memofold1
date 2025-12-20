@@ -42,7 +42,7 @@ class CommentRepository {
    }
    const replies = await Comment.aggregate([
     { $match: match},
-    { $sort: {createdAt: -1, _id: -1}},
+    { $sort: {createdAt: 1, _id: -1}},
     { $limit: limit},
     { $lookup: {
       from: "users",

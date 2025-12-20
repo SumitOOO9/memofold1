@@ -4,12 +4,16 @@ const cache = require("../utils/cache");
 const postRepository = require("../repositories/postRepository")
 
 class UserService {
- static async isUsernameTaken(username, excludeUserId = null) {
-    const cond = { username };
-    if (excludeUserId) cond._id = { $ne: excludeUserId };
-    const user = await userRepository.findOne(cond.toLowerCase());
-    return !!user;
-  }
+static async isUsernameTaken(username, excludeUserId = null) {
+  const normalizedUsername = username.toLowerCase();
+
+  const cond = { username: normalizedUsername };
+  if (excludeUserId) cond._id = { $ne: excludeUserId };
+
+  const user = await userRepository.findOne(cond);
+  return !!user;
+}
+
 
  static async isEmailTaken(email, excludeUserId = null) {
     const cond = { email };
