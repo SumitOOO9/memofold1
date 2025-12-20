@@ -10,6 +10,8 @@ exports.createPost = async (req, res) => {
     console.log("Base64 Image:", base64Image);
     console.log("Uploaded media URL:", videoUrl);
 
+        const mediaPublicId = req.media?.publicId || null;
+
     const isContentEmpty = !content || content.trim() === "";
  const isMediaEmpty =
       (!base64Image || base64Image === "null" || base64Image.trim() === "") &&
@@ -25,7 +27,8 @@ exports.createPost = async (req, res) => {
       content || "", 
       base64Image, 
       createdAt,
-      videoUrl
+      videoUrl,
+      mediaPublicId 
     );
 
     res.status(201).json({ message: "Post created successfully", post });
@@ -60,10 +63,10 @@ exports.getMyPosts = async (req, res) => {
   }
 };
 
-exports.getPostsByUsername = async (req, res) => {
+exports.getPostByUserId = async (req, res) => {
   try {
     const { limit = 10, cursor } = req.query;
-    const {posts, nextCursor} = await PostService.getPostsByUsername(req.params.username, Number(limit), cursor);
+    const {posts, nextCursor} = await PostService.getPostsByUserId(req.params.id, Number(limit), cursor);
     res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -137,24 +140,45 @@ exports.updatePost = async (req, res) => {
   try {
     const { content, image: base64Image } = req.body;
     let updateData = { content };
+    console.log("Update request body:", image);
 
-    if (base64Image) {
-      if (base64Image === 'remove') {
-        updateData.image = "";
-      } else if (base64Image.startsWith('data:image/')) {
-        const imageUrl = await UploadService.processBase64Image(base64Image, req.user.id);
-        if (!imageUrl) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid image format"
-          });
-        }
-        updateData.image = imageUrl;
-      } else {
-        updateData.image = base64Image;
-      }
+   if (base64Image) {
+  // 🗑️ Remove image
+  if (base64Image === "remove") {
+    updateData.image = "";
+    updateData.media = null; // optional: clear media
+  }
+
+  // 🖼️ New base64 image
+  else if (base64Image.startsWith("data:image/")) {
+    const uploadedImage = await UploadService.processBase64Image(
+      base64Image,
+      req.user.id
+    );
+
+    if (!uploadedImage) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid image format",
+      });
     }
 
+    // ✅ STRING only
+    updateData.image = uploadedImage.url;
+
+    // ✅ Cloudinary metadata
+    updateData.media = {
+      url: uploadedImage.url,
+      publicId: uploadedImage.publicId,
+      type: "image",
+    };
+  }
+
+  // 🔁 Existing image URL (no change)
+  else {
+    updateData.image = base64Image;
+  }
+   }
     const updatedPost = await PostService.updatePost(
       req.params.id,
       req.user.id,

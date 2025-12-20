@@ -38,7 +38,7 @@ const uploadSingleToCloudinary = (req, res, next) => {
   const isVideo = req.file.mimetype.startsWith("video/");
 
   const uploadOptions = {
-    folder: isVideo ? "post_videos" : "profile_pics", // folder based on type
+    folder: isVideo ? "post_videos" : "post_images",
     resource_type: isVideo ? "video" : "image",
     public_id: `${req.user.id}_${Date.now()}`
   };
@@ -47,18 +47,17 @@ const uploadSingleToCloudinary = (req, res, next) => {
     uploadOptions,
     (error, result) => {
       if (error) {
-        console.error("Cloudinary upload error:", error);
         return res.status(500).json({ error: "Upload failed" });
       }
 
-      // ⏱️ Enforce 15 sec video limit
-      // console.log("Upload result:", result);
-      if (isVideo && result.duration > 15) {
-        return res.status(400).json({
-          error: "Video duration must be 15 seconds or less"
-        });
-      }
+      // ✅ STORE BOTH URL + PUBLIC ID
+      req.media = {
+        url: result.secure_url,
+        publicId: result.public_id,
+        type: isVideo ? "video" : "image"
+      };
 
+      // backward compatibility
       if (isVideo) {
         req.videoUrl = result.secure_url;
       } else {
@@ -71,6 +70,10 @@ const uploadSingleToCloudinary = (req, res, next) => {
 
   streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
 };
+
+
+
+
 
 
 module.exports = {
