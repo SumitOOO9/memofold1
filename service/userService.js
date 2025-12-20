@@ -4,12 +4,16 @@ const cache = require("../utils/cache");
 const postRepository = require("../repositories/postRepository")
 
 class UserService {
- static async isUsernameTaken(username, excludeUserId = null) {
-    const cond = { username };
-    if (excludeUserId) cond._id = { $ne: excludeUserId };
-    const user = await userRepository.findOne(cond);
-    return !!user;
-  }
+static async isUsernameTaken(username, excludeUserId = null) {
+  const normalizedUsername = username.toLowerCase();
+
+  const cond = { username: normalizedUsername };
+  if (excludeUserId) cond._id = { $ne: excludeUserId };
+
+  const user = await userRepository.findOne(cond);
+  return !!user;
+}
+
 
  static async isEmailTaken(email, excludeUserId = null) {
     const cond = { email };
@@ -26,61 +30,41 @@ class UserService {
     return userRepository.updateProfile(userId, profileUpdates, session);
   }
 
- static async updateUserAndProfileAtomic(userId, { username, email, description } = {}) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-      let committed = false;
-    try {
-      const userUpdates = {};
-      const profileUpdates = {};
+static async updateUserAndProfileAtomic(
+  userId,
+  { username, email, description }
+) {
+   const userUpdates = {};
+  const profileUpdates = {};
 
-      if (username !== undefined) userUpdates.username = username;
-      if (email !== undefined) userUpdates.email = email;
-      if (description !== undefined) profileUpdates.description = description?.trim();
-
-      if (userUpdates.username) {
-        const taken = await this.isUsernameTaken(userUpdates.username, userId);
-        if (taken) throw new Error("Username already taken");
-      }
-
-      if (userUpdates.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(userUpdates.email)) throw new Error("Invalid email format");
-        const emailTaken = await this.isEmailTaken(userUpdates.email, userId);
-        if (emailTaken) throw new Error("Email already registered");
-      }
-
-      if (profileUpdates.description !== undefined && profileUpdates.description.length > 500) {
-        throw new Error("Description cannot exceed 500 characters");
-      }
-
-      const [updatedUser, updatedProfile] = await Promise.all([
-        this.updateUserFields(userId, userUpdates, session),
-        this.updateProfile(userId, profileUpdates, session)
-      ]);
-
-      await session.commitTransaction();
-          committed = true;
-      session.endSession();
-
-      // Invalidate cache
-      await cache.del(`user:${userId}`);
-    const freshData = await this.getUserWithProfile(userId, { forceFresh: true });
-    await userRepository.updateUserIndex(userId, {
-        username: updatedUser.username,
-        fullName: updatedProfile.fullName,
-        profilePic: updatedProfile.profilePic,
-      });
-
-      return { updatedUser, updatedProfile, freshData };
-    } catch (err) {
-    if (!committed) {
-      await session.abortTransaction();
+  if (username) userUpdates.username = username.toLowerCase();
+  if (email) userUpdates.email = email;
+  if (description) {
+    if (description.length > 500) {
+      throw new Error("Description cannot exceed 500 characters");
     }
-    session.endSession();
-    throw err;
+    profileUpdates.description = description.trim();
   }
-  }
+
+  const [user, profile] = await Promise.all([
+    Object.keys(userUpdates).length
+      ? userRepository.updateUserFields(userId, userUpdates)
+      : userRepository.findById(userId),
+
+    Object.keys(profileUpdates).length
+      ? userRepository.updateProfile(userId, profileUpdates)
+      : userRepository.findProfile(userId),
+  ]);
+
+  cache.del(`user:${userId}`);
+  userRepository.updateUserIndex(userId, {
+    username: user.username,
+    profilePic: profile?.profilePic,
+  });
+
+  return { user, profile };
+}
+
 
  static async getUserWithProfile(userId, { forceFresh = false } = {}) {
     if (!forceFresh) {
@@ -95,7 +79,7 @@ class UserService {
       postRepository.countPostsByUserId({ userId })
     ])
     const friendsCount = user.friends?.length || 0;
-    console.log("user", user);
+    // console.log("user", user);
     const result = { user, profile, stats:{
       postCount,
       friendsCount

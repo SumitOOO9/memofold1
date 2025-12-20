@@ -3,6 +3,7 @@ const Post = require("../models/Post");
 const Comment = require("../models/comment");
 const User = require("../models/user");
 const { video } = require("../config/cloudinary");
+const { post } = require("../routes/post");
 
 class PostRepository {
   static async create(postData) {
@@ -10,6 +11,12 @@ class PostRepository {
     return await post.save();
   }
 
+  static async findPostMediaByIdAndUser(postId, userId) {
+    return Post.findOne(
+      { _id: postId, userId },
+      { media: 1 }
+    );
+  }
  static async getUserPosts(userId, limit = 10, cursor = null) {
     const matchStage = { userId: new mongoose.Types.ObjectId(userId) };
     if (cursor) matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
@@ -67,8 +74,8 @@ class PostRepository {
     ]);
   }
 
-  static async getPostsByUsername(username, limit = 10, cursor = null) {
-    const matchStage = { username };
+  static async getPostsByUserId(userId, limit = 10, cursor = null) {
+    const matchStage = { userId: new mongoose.Types.ObjectId(userId) };
     
  if (cursor) {
     // 1. Find the post for the given cursor _id
@@ -319,11 +326,14 @@ static async getFeed(limit, cursor = null) {
     ];
 
     if (cursor) {
-      pipeline.push({ $match: { "likes.userId": { $lt: new mongoose.Types.ObjectId(cursor) } } });
-    }
+  pipeline.push({
+      $match: {
+        "likes.createdAt": { $lt: new Date(cursor) }
+      }
+    });
+      }
 
     pipeline.push(
-      { $limit: limit },
       {
         $lookup: {
           from: "users",
@@ -338,13 +348,15 @@ static async getFeed(limit, cursor = null) {
           _id: "$user._id",
           username: "$user.username",
           profilePic: "$user.profilePic",
-          likedAt: "$likes.createdAt"
+        likedAt: { $ifNull: ["$likes.createdAt", new Date()] } // ensure likedAt always exists
         }
-      }
+      },
+      { $limit: limit }
     );
 
     const likes = await Post.aggregate(pipeline);
-    const nextCursor = likes.length > 0 ? likes[likes.length - 1]._id : null;
+  const nextCursor = likes.length > 0 ? likes[likes.length - 1].likedAt.toISOString() : null;
+   
 
     return { data: likes, nextCursor };
   }
@@ -374,6 +386,7 @@ static async getFeed(limit, cursor = null) {
     .select("_id userId username realname") 
     .lean();
 }
+
 
 }
 

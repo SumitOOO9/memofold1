@@ -6,6 +6,7 @@ const streamifier = require("streamifier");
 
 exports.uploadProfilePic = async (req, res) => {
   try {
+    console.log("Upload profile pic request received");
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
