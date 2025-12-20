@@ -66,10 +66,10 @@ if (uploadedImage) {
     return post;
   }
 
-  static async getAllPosts(limit, cursor = null) {
+  static async getAllPosts(userId, limit, cursor = null) {
     const query = cursor ? { _id: { $lt: cursor } } : {};
 
-    const posts = await PostRepository.getFeed(limit, cursor);
+    const posts = await PostRepository.getFeed(userId, limit, cursor);
 
     const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
@@ -98,8 +98,8 @@ if (uploadedImage) {
     return { posts, nextCursor };
   }
 
-  static async getPostById(postId) {
-    const post = await PostRepository.getPostById(postId);
+  static async getPostById(postId, userId) {
+    const post = await PostRepository.getPostById(postId, userId);
     return post;
   }
 

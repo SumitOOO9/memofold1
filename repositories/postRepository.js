@@ -19,6 +19,7 @@ class PostRepository {
   }
  static async getUserPosts(userId, limit = 10, cursor = null) {
     const matchStage = { userId: new mongoose.Types.ObjectId(userId) };
+    const viewerObjId = new mongoose.Types.ObjectId(userId);
     if (cursor) matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
 
     return await Post.aggregate([
@@ -35,6 +36,13 @@ class PostRepository {
         }
       },
       { $unwind: "$user" },
+       {
+      $addFields: {
+        isLikedByMe: {
+          $in: [viewerObjId, "$likes.userId"]
+        }
+      }
+    },
 
       { $addFields: { likesPreview: { $slice: ["$likes", -2] } } },
       {
@@ -56,6 +64,7 @@ class PostRepository {
           updatedAt: 1,
           likeCount: { $size: "$likes" },
           commentCount: { $size: "$comments" },
+          isLikedByMe: 1,
           likesPreview: {
             $map: {
               input: "$likesPreviewUsers",
@@ -76,6 +85,7 @@ class PostRepository {
 
   static async getPostsByUserId(userId, limit = 10, cursor = null) {
     const matchStage = { userId: new mongoose.Types.ObjectId(userId) };
+    const viewerObjId = new mongoose.Types.ObjectId(userId);
     
  if (cursor) {
     // 1. Find the post for the given cursor _id
@@ -104,8 +114,15 @@ class PostRepository {
         }
       },
       { $unwind: "$user" },
-
+        {
+      $addFields: {
+        isLikedByMe: {
+          $in: [viewerObjId, "$likes.userId"]
+        }
+      }
+    },
       { $addFields: { likesPreview: { $slice: ["$likes", -2] } } },
+
       {
         $lookup: {
           from: "users",
@@ -125,6 +142,7 @@ class PostRepository {
           updatedAt: 1,
           likeCount: { $size: "$likes" },
           commentCount: { $size: "$comments" },
+          isLikedByMe: 1,
           likesPreview: {
             $map: {
               input: "$likesPreviewUsers",
@@ -143,8 +161,9 @@ class PostRepository {
     ]);
   }
 
-  static async getPostById(postId) {
+  static async getPostById(postId, userId) {
     const postObjId = new mongoose.Types.ObjectId(postId);
+    const userObjId = new mongoose.Types.ObjectId(userId);
 
     const [post] = await Post.aggregate([
       { $match: { _id: postObjId } },
@@ -160,6 +179,10 @@ class PostRepository {
         }
       },
       { $unwind: "$user" },
+      // Check if liked by requesting user
+      {
+        $addFields: { isLiked: { $in: [userObjId, "$likes"] } }
+      },
 
       // Count comments
       {
@@ -172,7 +195,12 @@ class PostRepository {
       },
 
       // Likes preview
-      { $addFields: { likesPreview: { $slice: ["$likes", -2] } } },
+       {
+      $addFields: {
+        isLikedByMe: {
+          $in: [userObjId, "$likes.userId"]
+        }
+      } },
       {
         $lookup: {
           from: "users",
@@ -192,6 +220,7 @@ class PostRepository {
           videoUrl: 1,
           updatedAt: 1,
           likeCount: { $size: "$likes" },
+          isLikedByMe: 1,
           commentCount: { $size: "$comments" },
           likesPreview: {
             $map: {
@@ -247,7 +276,8 @@ class PostRepository {
       .lean();
   }
 
-static async getFeed(limit, cursor = null) {
+static async getFeed(userId, limit, cursor = null) {
+  const userObjId = new mongoose.Types.ObjectId(userId);
   const matchStage = cursor
     ? { _id: { $lt: new mongoose.Types.ObjectId(cursor) } }
     : {};
@@ -267,6 +297,14 @@ static async getFeed(limit, cursor = null) {
     },
     { $unwind: "$user" },
 
+     {
+      $addFields: {
+        isLikedByMe: {
+          $in: [userObjId, "$likes.userId"]
+        }
+      }
+    },
+
     {
       $project: {
         content: 1,
@@ -276,6 +314,7 @@ static async getFeed(limit, cursor = null) {
         likeCount: { $size: "$likes" },
         commentCount: { $size: "$comments" },
         likesPreview: { $slice: ["$likes", -2] },
+        isLikedByMe: 1,
 
         userId: {
           _id: "$user._id",
@@ -303,6 +342,7 @@ static async getFeed(limit, cursor = null) {
         likeCount: 1,
         commentCount: 1,
         userId: 1,
+        isLikedByMe: 1,
         likesPreview: {
           $map: {
             input: "$likesPreviewUsers",
