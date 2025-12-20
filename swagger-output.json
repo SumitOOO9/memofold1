@@ -364,12 +364,12 @@
         }
       }
     },
-    "/api/posts/user/{username}": {
+    "/api/posts/user/{id}": {
       "get": {
         "description": "",
         "parameters": [
           {
-            "name": "username",
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"

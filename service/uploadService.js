@@ -33,8 +33,10 @@ class UploadService {
         }
       );
 
-      return result.secure_url;
-    } catch (error) {
+return {
+      url: result.secure_url,
+      publicId: result.public_id
+    };    } catch (error) {
       console.error('Error uploading to Cloudinary:', error);
       return null;
     }

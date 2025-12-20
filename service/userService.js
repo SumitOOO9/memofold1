@@ -32,77 +32,37 @@ static async isUsernameTaken(username, excludeUserId = null) {
 
 static async updateUserAndProfileAtomic(
   userId,
-  { username, email, description } = {}
+  { username, email, description }
 ) {
-  const session = await mongoose.startSession();
+   const userUpdates = {};
+  const profileUpdates = {};
 
-  try {
-    let updatedUser;
-    let updatedProfile;
-
-    await session.withTransaction(async () => {
-      const userUpdates = {};
-      const profileUpdates = {};
-
-      if (username !== undefined) userUpdates.username = username;
-      if (email !== undefined) userUpdates.email = email;
-      if (description !== undefined)
-        profileUpdates.description = description.trim();
-
-      if (userUpdates.username) {
-        const taken = await this.isUsernameTaken(userUpdates.username, userId);
-        if (taken) throw new Error("Username already taken");
-      }
-
-      if (userUpdates.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(userUpdates.email))
-          throw new Error("Invalid email format");
-
-        const emailTaken = await this.isEmailTaken(userUpdates.email, userId);
-        if (emailTaken) throw new Error("Email already registered");
-      }
-
-      if (
-        profileUpdates.description &&
-        profileUpdates.description.length > 500
-      ) {
-        throw new Error("Description cannot exceed 500 characters");
-      }
-
-      // ⬇️ Sequential, session-safe updates
-      updatedUser = await this.updateUserFields(
-        userId,
-        userUpdates,
-        session
-      );
-
-      updatedProfile = await this.updateProfile(
-        userId,
-        profileUpdates,
-        session
-      );
-    });
-
-    // Outside transaction
-    await cache.del(`user:${userId}`);
-
-    const freshData = await this.getUserWithProfile(userId, {
-      forceFresh: true,
-    });
-
-    await userRepository.updateUserIndex(userId, {
-      username: updatedUser.username,
-      fullName: updatedProfile.fullName,
-      profilePic: updatedProfile.profilePic,
-    });
-
-    return { updatedUser, updatedProfile, freshData };
-  } catch (err) {
-    throw err;
-  } finally {
-    session.endSession(); // ✅ only here
+  if (username) userUpdates.username = username.toLowerCase();
+  if (email) userUpdates.email = email;
+  if (description) {
+    if (description.length > 500) {
+      throw new Error("Description cannot exceed 500 characters");
+    }
+    profileUpdates.description = description.trim();
   }
+
+  const [user, profile] = await Promise.all([
+    Object.keys(userUpdates).length
+      ? userRepository.updateUserFields(userId, userUpdates)
+      : userRepository.findById(userId),
+
+    Object.keys(profileUpdates).length
+      ? userRepository.updateProfile(userId, profileUpdates)
+      : userRepository.findProfile(userId),
+  ]);
+
+  cache.del(`user:${userId}`);
+  userRepository.updateUserIndex(userId, {
+    username: user.username,
+    profilePic: profile?.profilePic,
+  });
+
+  return { user, profile };
 }
 
 
@@ -119,7 +79,7 @@ static async updateUserAndProfileAtomic(
       postRepository.countPostsByUserId({ userId })
     ])
     const friendsCount = user.friends?.length || 0;
-    console.log("user", user);
+    // console.log("user", user);
     const result = { user, profile, stats:{
       postCount,
       friendsCount

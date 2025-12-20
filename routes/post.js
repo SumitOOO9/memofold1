@@ -22,7 +22,7 @@ router.post("/",
 
 router.get("/", authenticate, postController.getPosts);
 router.get("/my-posts", authenticate, postController.getMyPosts);
-router.get("/user/:username", authenticate, postController.getPostsByUsername);
+router.get("/user/:id", authenticate, postController.getPostByUserId);
 router.post('/like/:id', authenticate, postController.likePost);
 router.get('/edit/:id', authenticate, postController.getPostForEdit);
 router.put('/update/:id', authenticate, postController.updatePost);

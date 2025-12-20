@@ -27,7 +27,7 @@ exports.authenticate = async (req, res, next) => {
       email: user.email,
     };
 
-    console.log("✅ Authenticated user:", req.user);
+    // console.log("✅ Authenticated user:", req.user);
     next();
   } catch (err) {
     console.error("JWT verification failed:", err.message);
