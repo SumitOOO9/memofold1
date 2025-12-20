@@ -27,13 +27,15 @@ class PostService {
       if (!uploadedImage) throw new Error("Invalid image format");
     }
 
-imageUrl = uploadedImage.url;
+if (uploadedImage) {
+  imageUrl = uploadedImage.url;
 
-media = {
-  url: uploadedImage.url,
-  publicId: uploadedImage.publicId,
-  type: "image"
-};
+  media = {
+    url: uploadedImage.url,
+    publicId: uploadedImage.publicId,
+    type: "image"
+  };
+}
   
 
   // 🎥 Video from Cloudinary middleware
