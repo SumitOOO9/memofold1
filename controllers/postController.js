@@ -189,38 +189,17 @@ exports.updatePost = async (req, res) => {
     }
 
     /* ================= VIDEO HANDLING ================= */
+if (req.media && req.media.type === "video") {
+  updateData.media = req.media;
+  updateData.videoUrl = req.media.url; // keep legacy in sync
+  updateData.image = ""; // clear image
+}
 
-    if (media !== undefined) {
-      // 🗑️ Remove video
-      if (media === null || media === "" || media === "remove") {
-        updateData.media = null;
-        updateData.videoUrl = "";
-      }
-
-      // 🎥 New base64 video
-      else if (typeof media === "string" && media.startsWith("data:video/")) {
-        const uploadedVideo = await UploadService.processBase64Video(
-          media,
-          req.user.id
-        );
-
-        if (!uploadedVideo) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid video format",
-          });
-        }
-
-        updateData.media = {
-          url: uploadedVideo.url,
-          publicId: uploadedVideo.publicId,
-          type: "video",
-        };
-        updateData.videoUrl = uploadedVideo.url;
-
-        updateData.image = ""; // image not needed for video
-      }
-    }
+// 🗑️ Explicit video removal (from body)
+if (body.media === null || body.media === "" || body.media === "remove") {
+  updateData.media = null;
+  updateData.videoUrl = "";
+}
 
     // 🚫 Nothing to update
     if (Object.keys(updateData).length === 0) {

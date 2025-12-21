@@ -25,7 +25,7 @@ router.get("/my-posts", authenticate, postController.getMyPosts);
 router.get("/user/:id", authenticate, postController.getPostByUserId);
 router.post('/like/:id', authenticate, postController.likePost);
 router.get('/edit/:id', authenticate, postController.getPostForEdit);
-router.put('/update/:id', authenticate, postController.updatePost);
+router.put('/update/:id', authenticate,uploadSingle, uploadSingleToCloudinary, postController.updatePost);
 router.delete('/delete/:id', authenticate, postController.deletePost);
 router.get('/:id/likes', authenticate, postController.getPostLikes);
 router.get('/:id', authenticate, postController.getPostById)
