@@ -88,11 +88,12 @@ if (uploadedImage) {
     return { posts, nextCursor };
   }
 
-  static async getPostsByUserId(userId, limit = 10, cursor = null) {
+  static async getPostsByUserId(userId, limit = 10, cursor = null, viewerId) {
     const posts = await PostRepository.getPostsByUserId(
       userId,
       limit,
-      cursor
+      cursor,
+      viewerId
     );
     const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
     return { posts, nextCursor };
@@ -115,19 +116,21 @@ if (uploadedImage) {
       updateData
     );
 
-    console.log("Updated post:", post);
-    
 
     if (
-      updateData.media &&
-      existingPost.media?.publicId &&
-      existingPost.media.publicId !== updateData.media.publicId
-    ) {
-      deleteFromCloudinary(
-        existingPost.media.publicId,
-        existingPost.media.type
-      );
-    }
+    existingPost.media?.publicId &&
+    (
+      updateData.media === null ||
+      (updateData.media && updateData.media.publicId !== existingPost.media.publicId)
+    )
+  ) {
+    await deleteFromCloudinary(
+      existingPost.media.publicId,
+      existingPost.media.type
+    );
+    console.log("Deleted old media from Cloudinary:", existingPost.media.publicId);
+  }
+
 
     // Invalidate caches
     await redisClient.del("posts:all");
