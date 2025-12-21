@@ -83,9 +83,9 @@ class PostRepository {
     ]);
   }
 
-  static async getPostsByUserId(userId, limit = 10, cursor = null) {
+  static async getPostsByUserId(userId, limit = 10, cursor = null, viewerId) {
     const matchStage = { userId: new mongoose.Types.ObjectId(userId) };
-    const viewerObjId = new mongoose.Types.ObjectId(userId);
+    const viewerObjId = new mongoose.Types.ObjectId(viewerId);
     
  if (cursor) {
     // 1. Find the post for the given cursor _id
@@ -183,6 +183,7 @@ class PostRepository {
       {
         $addFields: { isLiked: { $in: [userObjId, "$likes"] } }
       },
+      { $addFields: { likesPreview: { $slice: ["$likes", -2] } } },
 
       // Count comments
       {
@@ -222,7 +223,7 @@ class PostRepository {
           likeCount: { $size: "$likes" },
           isLikedByMe: 1,
           commentCount: { $size: "$comments" },
-          likesPreview: {
+         likesPreview: {
             $map: {
               input: "$likesPreviewUsers",
               as: "u",
