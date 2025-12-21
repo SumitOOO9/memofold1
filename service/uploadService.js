@@ -65,6 +65,49 @@ return {
       console.error('Error deleting file:', error);
     }
   }
+
+  static async processBase64Video(base64String, userId) {
+  if (!base64String || !base64String.startsWith("data:video/")) {
+    return null;
+  }
+
+  try {
+    const matches = base64String.match(
+      /^data:video\/([a-zA-Z0-9]+);base64,(.+)$/
+    );
+
+    if (!matches || matches.length !== 3) {
+      return null;
+    }
+
+    const videoType = matches[1];
+    const videoData = matches[2];
+
+    const allowedTypes = ["mp4", "webm", "mov", "avi", "mkv"];
+    if (!allowedTypes.includes(videoType.toLowerCase())) {
+      return null;
+    }
+
+    const result = await cloudinary.uploader.upload(
+      `data:video/${videoType};base64,${videoData}`,
+      {
+        folder: "post_videos",
+        resource_type: "video",
+        public_id: `post_video_${userId}_${Date.now()}`,
+      }
+    );
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+      type: "video",
+    };
+  } catch (error) {
+    console.error("Video upload error:", error);
+    return null;
+  }
+}
+
 }
 
 module.exports = UploadService;

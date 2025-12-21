@@ -56,8 +56,9 @@ exports.getPosts = async (req, res) => {
 
 exports.getMyPosts = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { limit = 10, cursor } = req.query;
-    const {posts, nextCursor} = await PostService.getUserPosts(req.user.id, Number(limit), cursor);
+    const {posts, nextCursor} = await PostService.getUserPosts(userId, Number(limit), cursor);
     res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -66,8 +67,9 @@ exports.getMyPosts = async (req, res) => {
 
 exports.getPostByUserId = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { limit = 10, cursor } = req.query;
-    const {posts, nextCursor} = await PostService.getPostsByUserId(req.params.id, Number(limit), cursor);
+    const {posts, nextCursor} = await PostService.getPostsByUserId(req.params.id, Number(limit), cursor, userId);
     res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -140,73 +142,116 @@ exports.getPostLikes = async (req, res) => {
 };
 exports.updatePost = async (req, res) => {
   try {
-    const { content, image: base64Image } = req.body;
-    let updateData = { content };
-    console.log("Update request body:", image);
+    const body = req.body || {};
+    const content = body.content;
+    const image = body.image;   
+    const media = body.media;   
+    console.log("Update request body:", body);
+    let updateData = {};
 
-   if (base64Image) {
-  // 🗑️ Remove image
-  if (base64Image === "remove") {
-    updateData.image = "";
-    updateData.media = null; // optional: clear media
-  }
+    if (typeof content === "string") {
+      updateData.content = content;
+    }
 
-  // 🖼️ New base64 image
-  else if (base64Image.startsWith("data:image/")) {
-    const uploadedImage = await UploadService.processBase64Image(
-      base64Image,
-      req.user.id
-    );
 
-    if (!uploadedImage) {
+    if (image !== undefined) {
+      if (image === null || image === "" || image === "remove") {
+        updateData.image = "";
+        updateData.media = null;
+      }
+
+      // 🖼️ New base64 image
+      else if (typeof image === "string" && image.startsWith("data:image/")) {
+        const uploaded = await UploadService.processBase64Image(
+          image,
+          req.user.id
+        );
+
+        if (!uploaded) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid image format",
+          });
+        }
+
+        updateData.image = uploaded.url;
+        updateData.media = {
+          url: uploaded.url,
+          publicId: uploaded.publicId,
+          type: "image",
+        };
+      }
+
+      // 🔁 Existing URL (keep or replace)
+      else if (typeof image === "string") {
+        updateData.image = image;
+      }
+    }
+
+    /* ================= VIDEO HANDLING ================= */
+
+    if (media !== undefined) {
+      // 🗑️ Remove video
+      if (media === null || media === "" || media === "remove") {
+        updateData.media = null;
+        updateData.videoUrl = "";
+      }
+
+      // 🎥 New base64 video
+      else if (typeof media === "string" && media.startsWith("data:video/")) {
+        const uploadedVideo = await UploadService.processBase64Video(
+          media,
+          req.user.id
+        );
+
+        if (!uploadedVideo) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid video format",
+          });
+        }
+
+        updateData.media = {
+          url: uploadedVideo.url,
+          publicId: uploadedVideo.publicId,
+          type: "video",
+        };
+        updateData.videoUrl = uploadedVideo.url;
+
+        updateData.image = ""; // image not needed for video
+      }
+    }
+
+    // 🚫 Nothing to update
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid image format",
+        message: "Nothing to update",
       });
     }
 
-    // ✅ STRING only
-    updateData.image = uploadedImage.url;
-
-    // ✅ Cloudinary metadata
-    updateData.media = {
-      url: uploadedImage.url,
-      publicId: uploadedImage.publicId,
-      type: "image",
-    };
-  }
-
-  // 🔁 Existing image URL (no change)
-  else {
-    updateData.image = base64Image;
-  }
-   }
     const updatedPost = await PostService.updatePost(
       req.params.id,
       req.user.id,
       updateData
     );
 
-    if (!updatedPost) {
-      return res.status(403).json({
-        success: false,
-        message: "Post not found or you do not have permission to edit it."
-      });
-    }
-
     res.json({
       success: true,
       message: "Post updated successfully",
-      post: updatedPost
+      post: updatedPost,
     });
   } catch (error) {
     console.error("Update error:", error);
     res.status(500).json({
       success: false,
-      message: "An error occurred while updating the post."
+      message: "An error occurred while updating the post.",
     });
   }
 };
+
+
+
 
 exports.deletePost = async (req, res) => {
   try {
