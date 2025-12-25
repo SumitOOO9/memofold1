@@ -6,6 +6,7 @@ const commentRepository = require("../repositories/commentRepository");
 const NotificationRepository = require("../repositories/notififcationRepository");
 const mongoose = require("mongoose");
 const deleteFromCloudinary = require("../utils/deleteCloudinary");
+const NotificationService = require("./notificationService");
 class PostService {
   static async createPost(
     userId,
@@ -20,7 +21,7 @@ class PostService {
     let mediaUrl = "";
     let media = null;
     let uploadedImage = null;
-    console.log("Creating post with base64Image:and videoUrl:", videoUrl);
+   // console.loglog("Creating post with base64Image:and videoUrl:", videoUrl);
 
     if (base64Image && base64Image.startsWith("data:image/")) {
       uploadedImage = await UploadService.processBase64Image(base64Image, userId);
@@ -128,7 +129,7 @@ if (uploadedImage) {
       existingPost.media.publicId,
       existingPost.media.type
     );
-    console.log("Deleted old media from Cloudinary:", existingPost.media.publicId);
+   // console.loglog("Deleted old media from Cloudinary:", existingPost.media.publicId);
   }
 
 
@@ -168,23 +169,28 @@ if (uploadedImage) {
       updatedPost.userId.toString() !== userId.toString()
     ) {
       const user = await userRepository.findById(userId);
-      await NotificationRepository.create({
-        receiver: updatedPost.userId,
-        sender: userId,
-        type: "like",
-        postid: new mongoose.Types.ObjectId(postId),
-        metadata: {
-          username: user.username,
-          realname: user.realname,
-          profilePic: user.profilePic,
-        },
-      });
+      await NotificationService.createNotification({
+      receiver: updatedPost.userId,
+      sender: userId,
+      type: "like",
+      postid: new mongoose.Types.ObjectId(postId),
+
+      // for push
+      title: "New Like",
+      message: `${user.username} liked your post`,
+
+      metadata: {
+        username: user.username,
+        realname: user.realname,
+        profilePic: user.profilePic,
+      },
+    });
 
       io.to(updatedPost.userId.toString()).emit("newNotification", {
         message: `${user.username} liked your post`,
       });
     } else if (action === "unliked") {
-      await NotificationRepository.delete({
+      await NotificationService.deleteNotifications({
         receiver: updatedPost.userId,
         sender: userId,
         type: "like",
@@ -218,7 +224,7 @@ if (uploadedImage) {
 
     if (post.media?.publicId) {
       deleteFromCloudinary(post.media.publicId, post.media.type);
-      console.log("Deleted media from Cloudinary:", post.media.publicId);
+     // console.loglog("Deleted media from Cloudinary:", post.media.publicId);
     }
 
     // Delete comments

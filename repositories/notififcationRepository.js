@@ -10,7 +10,7 @@ class NotificationRepository {
     return await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate('sender', 'username profilePic realname')
+      .populate('sender', 'username profilePic realname ')
       .populate('postid')
       .lean();
   }

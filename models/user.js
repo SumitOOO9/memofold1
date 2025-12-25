@@ -36,6 +36,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    tokenVersion: { type: Number, default: 0 },
+
   friends: [
   {
     _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // reference to the User

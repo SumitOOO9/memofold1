@@ -6,6 +6,7 @@ const cache = require("../utils/cache");
 const passwordReset = require("../models/passwordReset");
 const { sendVerificationCode } = require("../service/sendEmail");
 const { upsertStreamUser, generateStreamToken, ensureStreamUsersExist } = require("../lib/stream");
+const { generateAccessToken, generateRefreshToken } = require("../utils/token");
 
 // Helper: generate JWT
 const generateToken = (user) => {
@@ -138,11 +139,18 @@ const isMatch = await user.comparePassword(password);
       console.error("❌ Stream upsert failed during login:", err.message);
     }
 
-    const token = generateToken(user);
-
+ const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+     res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/api/auth/refresh",
+      maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
+    });
     return res.status(200).json({
       message: "Login successful.",
-      token,
+        token: accessToken,
       user: {
         id: user._id,
         username: user.username,
@@ -154,6 +162,32 @@ const isMatch = await user.comparePassword(password);
   } catch (err) {
     console.error("❌ Login error:", err.message);
     return res.status(500).json({ message: "Internal server error during login." });
+  }
+};
+
+const refreshToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(payload.id);
+    if (!user || user.tokenVersion !== payload.tokenVersion) return res.sendStatus(403);
+
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/api/auth/refresh",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ token: newAccessToken });
+  } catch {
+    res.sendStatus(403);
   }
 };
 
@@ -259,6 +293,21 @@ const ensureUsersExist = async (req, res) => {
   }
 };
 
+const logout = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) return res.sendStatus(200);
+
+    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    await User.findByIdAndUpdate(payload.id, { $inc: { tokenVersion: 1 } });
+
+    res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+    res.status(200).json({ message: "Logged out successfully." });
+  } catch {
+    res.status(500).json({ message: "Server error." });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -266,4 +315,6 @@ module.exports = {
   resetPassword,
   getStreamToken,
   ensureUsersExist,
+  refreshToken,
+  logout,
 };
