@@ -87,7 +87,7 @@ static async addCommentToPost(postId, commentId, session = null) {
       $push: { comments: commentId },
       $inc: { commentCount: 1 }
     },
-    { new: true, session, select: "commentCount userId" } // return updated doc
+    { new: true, session, select: "commentCount userId content videoUrl images" } // return updated doc
   ).lean();
 }
 

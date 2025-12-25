@@ -4,7 +4,7 @@ exports.getNotifications = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const cursor = req.query.cursor || null;
-    console.log("Controller - Fetching notifications for user:", req.user.id)
+   // console("Controller - Fetching notifications for user:", req.user.id)
     const notifications = await NotificationService.getNotification(req.user.id, limit, cursor);
 
     const nextCursor = notifications.length === limit

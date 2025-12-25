@@ -22,6 +22,9 @@ const notificationSchema = new mongoose.Schema({
     read: {
         type: Boolean,
         default: false
+    },
+    metadata: {
+        type: mongoose.Schema.Types.Mixed,
     }
 }, { timestamps: true });
 

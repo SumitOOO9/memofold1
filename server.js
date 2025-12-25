@@ -12,6 +12,9 @@ const userRoutes = require("./routes/userRoutes");
 const friendRoutes = require("./routes/friendRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const pushRoutes = require("./routes/pushRoute");
+const cookieParser = require("cookie-parser");
+
 // const profileRoutes = require("./routes/profileRoutes");
 
 const connectDb = require("./config/db");
@@ -32,7 +35,7 @@ const PORT = process.env.PORT || 3000;
 
 connectDb();
 
-
+app.use(cookieParser());
 securityMiddleware(app);
 
 
@@ -64,6 +67,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/friends", friendRoutes)
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/push", pushRoutes);
 // app.use("/api/profile", profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
@@ -86,7 +90,7 @@ app.use((err, req, res, next) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("⚡ New client connected:", socket.id);
+  // console.log("⚡ New client connected:", socket.id);
 
   // Join per-user room
   socket.on("join", (userId) => {

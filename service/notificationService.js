@@ -1,5 +1,6 @@
 const NotificationRepository = require('../repositories/notififcationRepository');
 const redis = require('../utils/cache');
+const PushService = require('./pushService');
 
 class NotificationService {
 
@@ -12,7 +13,7 @@ class NotificationService {
     // if (notifications) return notifications;
     
     // Fetch from DB
-    console.log("Fetching notifications from DB for user:", userId);
+    // // console.log("Fetching notifications from DB for user:", userId);
    const notifications = await NotificationRepository.findByUser(userId, limit, cursor);
     
     // Save in Redis for 1 hour
@@ -39,9 +40,17 @@ class NotificationService {
   // Create notification and invalidate cache
   static async createNotification(data) {
     const notif = await NotificationRepository.create(data);
+     await PushService.sendToUser(data.receiver, {
+    title: data.title || "New Notification",
+    body: data.message,
+    url: "/notifications",
+  });
+
+  // // console.log("Notification created and push sent to user:", data.receiver);
 
     // Invalidate cache for recipient
     await redis.del(`user:${data.receiver}:notifications`);
+    
     return notif;
   }
 
