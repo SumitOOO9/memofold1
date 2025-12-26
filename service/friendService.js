@@ -2,6 +2,7 @@ const FriendRepository = require('../repositories/friendRepository');
 const redis = require('../utils/cache'); 
 const NotificatrionRepository = require('../repositories/notififcationRepository');
 const UserRepository = require('../repositories/UserRepository');
+const FriendList = require('../models/friendList');
 class FriendService {
 static async getFriends(userId, limit = 10, cursor = null) {
   const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
@@ -10,8 +11,15 @@ static async getFriends(userId, limit = 10, cursor = null) {
   //     return cached;
   //   }
 
-  const user = await UserRepository.findById(userId);
-  let friends = user.friends || [];
+  // Prefer `FriendList` collection; fallback to `User.friends` for compatibility
+  const friendListDoc = await FriendRepository.getFriendListByUserId(userId);
+  let friends = [];
+  if (friendListDoc && Array.isArray(friendListDoc.friends) && friendListDoc.friends.length) {
+    friends = friendListDoc.friends;
+  } else {
+    const user = await UserRepository.findById(userId);
+    friends = (user && user.friends) ? user.friends : [];
+  }
   // console.log("friends", friends);
   friends.sort((a, b) => b._id.toString().localeCompare(a._id.toString()));
 
@@ -129,18 +137,28 @@ static async getFriends(userId, limit = 10, cursor = null) {
   const request = receiver.friendrequests[requestIndex];
 
   if (action === "accept") {
-    receiver.friends.addToSet({
-      _id: sender._id,
-      username: sender.username,
-      profilePic: sender.profilePic,
-      realname: sender.realname
-    });
-    sender.friends.addToSet({
-      _id: receiver._id,
-      username: receiver.username,
-      profilePic: receiver.profilePic,
-      realname: receiver.realname
-    });
+    // Update FriendList for both users
+    await FriendList.findOneAndUpdate(
+      { user: receiver._id },
+      { $addToSet: { friends: { _id: sender._id, username: sender.username, profilePic: sender.profilePic, realname: sender.realname, addedAt: new Date() } } },
+      { upsert: true }
+    );
+
+    await FriendList.findOneAndUpdate(
+      { user: sender._id },
+      { $addToSet: { friends: { _id: receiver._id, username: receiver.username, profilePic: receiver.profilePic, realname: receiver.realname, addedAt: new Date() } } },
+      { upsert: true }
+    );
+
+    // Also keep User.friends in sync for backward compatibility
+    if (!receiver.friends) receiver.friends = [];
+    if (!receiver.friends.some(f => f._id?.toString() === sender._id.toString())) {
+      receiver.friends.push({ _id: sender._id, username: sender.username, profilePic: sender.profilePic, realname: sender.realname, addedAt: new Date() });
+    }
+    if (!sender.friends) sender.friends = [];
+    if (!sender.friends.some(f => f._id?.toString() === receiver._id.toString())) {
+      sender.friends.push({ _id: receiver._id, username: receiver.username, profilePic: receiver.profilePic, realname: receiver.realname, addedAt: new Date() });
+    }
 
         receiver.friendrequests.splice(requestIndex, 1);
         if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
@@ -198,12 +216,19 @@ static async removeFriend(userId, friendId, io) {
 
   if (!user || !friend) throw new Error("User not found");
 
-  // Remove friend from both sides
-  user.friends = user.friends.filter(f => f._id.toString() !== friendId.toString());
-  friend.friends = friend.friends.filter(f => f._id.toString() !== userId.toString());
+  // Remove friend from FriendList collection
+  await FriendList.findOneAndUpdate({ user: userId }, { $pull: { friends: { _id: friendId } } });
+  await FriendList.findOneAndUpdate({ user: friendId }, { $pull: { friends: { _id: userId } } });
 
-  await FriendRepository.saveUser(user);
-  await FriendRepository.saveUser(friend);
+  // Also remove from User.friends for backward compatibility
+  if (user && Array.isArray(user.friends)) {
+    user.friends = user.friends.filter(f => f._id.toString() !== friendId.toString());
+    await FriendRepository.saveUser(user);
+  }
+  if (friend && Array.isArray(friend.friends)) {
+    friend.friends = friend.friends.filter(f => f._id.toString() !== userId.toString());
+    await FriendRepository.saveUser(friend);
+  }
 
 await NotificatrionRepository.delete({
   $or: [
