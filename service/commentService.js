@@ -284,6 +284,15 @@ const updatedPost = await CommentRepository.updateCommentCount(postId, allCommen
       session.endSession();
     }
 
+      // Delete notifications related to the deleted comment(s)
+      try {
+        await NotificationService.deleteNotifications({
+          "metadata.comment.id": { $in: allCommentIds }
+        });
+      } catch (e) {
+        // console.error('Failed to delete notifications for comments', allCommentIds, e);
+      }
+
       await redisClient.del(`comments:post:${postId}`);
       // io.to(`post:${postId}`).emit("commentDeleted", {
       //   commentId,

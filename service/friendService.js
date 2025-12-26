@@ -12,7 +12,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
 
   const user = await UserRepository.findById(userId);
   let friends = user.friends || [];
-  console.log("friends", friends);
+  // console.log("friends", friends);
   friends.sort((a, b) => b._id.toString().localeCompare(a._id.toString()));
 
   if (cursor) {
@@ -21,7 +21,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
       friends = friends.slice(cursorIndex + 1);
     }
   }
-  console.log("paginated friends", friends);
+  // console.log("paginated friends", friends);
   const paginated = friends.slice(0, limit);
   const nextCursor = paginated.length > 0 ? paginated[paginated.length - 1]._id : null;
 

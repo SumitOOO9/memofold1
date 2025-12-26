@@ -59,11 +59,11 @@ const register = async (req, res) => {
       console.error("❌ Stream upsert failed during registration:", err.message);
     }
 
-    const token = generateToken(newUser);
+    const accessToken = generateAccessToken(newUser);
 
     return res.status(201).json({
       message: "User registered successfully.",
-      token,
+      token: accessToken,
       user: {
         id: newUser._id,
         username: newUser.username,

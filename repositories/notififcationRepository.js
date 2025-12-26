@@ -31,7 +31,7 @@ class NotificationRepository {
     );
   }
   static async create(notificationData) {
-    console.log("notificationData", notificationData);
+    // console.log("notificationData", notificationData);
     const notif = new Notification(notificationData);
     return await notif.save();
   }

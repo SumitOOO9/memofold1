@@ -230,6 +230,19 @@ if (uploadedImage) {
     // Delete comments
     await commentRepository.deleteManyByPostId(postId);
 
+    // Delete notifications related to this post (likes, comments, replies)
+    try {
+      await NotificationService.deleteNotifications({
+        $or: [
+          { postid: new mongoose.Types.ObjectId(postId) },
+          { "metadata.post.id": new mongoose.Types.ObjectId(postId) }
+        ]
+      });
+    } catch (e) {
+      // swallow errors to avoid failing deletion flow; log if needed
+      // console.error('Failed to delete notifications for post', postId, e);
+    }
+
     // Invalidate caches
     await redisClient.del("posts:all");
     await redisClient.del(`posts:user:${userId}`);
