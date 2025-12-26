@@ -1,0 +1,132 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: radial-gradient(circle at top left, #dbeafe, #f0f9ff);
+  color: #1f2937;
+  padding: 20px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #f8f8f8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.login {
+  cursor: pointer;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(to right, #0072ff, #00c6ff);
+  color: white;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+.login-btn:hover {
+  background: linear-gradient(to right,#00c6ff, #0072ff );
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.terms-container {
+  max-width: 850px;
+  margin: auto;
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+}
+
+header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+header h1 {
+  font-size: 36px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: #4b5563;
+}
+
+.accordion-section details {
+  margin-bottom: 20px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 15px 20px;
+  transition: all 0.3s ease;
+}
+
+.accordion-section summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d4ed8;
+  list-style: none;
+}
+
+.accordion-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-section p {
+  margin-top: 10px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+footer {
+  text-align: center;
+  margin-top: 50px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@media (max-width: 600px) {
+  .terms-container {
+    padding: 25px;
+  }
+
+  header h1 {
+    font-size: 28px;
+  }
+
+  .accordion-section summary {
+    font-size: 16px;
+  }
+
+  .login-btn {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+  }
+}

@@ -1,0 +1,230 @@
+const FriendRepository = require('../repositories/friendRepository');
+const redis = require('../utils/cache'); 
+const NotificatrionRepository = require('../repositories/notififcationRepository');
+const UserRepository = require('../repositories/UserRepository');
+const FriendList = require('../models/friendList');
+class FriendService {
+static async getFriends(userId, limit = 10, cursor = null) {
+  const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
+  // let cached = await redis.get(cacheKey);
+  // if (cached) {
+  //     return cached;
+  //   }
+
+  // Read friends from the authoritative `FriendList` collection
+  const friendListDoc = await FriendRepository.getFriendListByUserId(userId);
+  const friends = (friendListDoc && Array.isArray(friendListDoc.friends)) ? friendListDoc.friends : [];
+  // console.log("friends", friends);
+  friends.sort((a, b) => b._id.toString().localeCompare(a._id.toString()));
+
+  if (cursor) {
+    const cursorIndex = friends.findIndex(f => f._id.toString() === cursor);
+    if (cursorIndex >= 0) {
+      friends = friends.slice(cursorIndex + 1);
+    }
+  }
+  // console.log("paginated friends", friends);
+  const paginated = friends.slice(0, limit);
+  const nextCursor = paginated.length > 0 ? paginated[paginated.length - 1]._id : null;
+
+  await redis.set(cacheKey, JSON.stringify({ friendsList: paginated, nextCursor, total: friends.length }), 'EX', 6000);
+
+  return { friendsList: paginated, nextCursor, total: friends.length };
+}
+
+ static async toggleFriendRequest(senderUserId, receiverUserId, io) {
+  if (!senderUserId || !receiverUserId) throw new Error("Sender or receiver ID missing");
+  if (senderUserId.toString() === receiverUserId.toString())
+    throw new Error("You cannot send a friend request to yourself");
+
+  const receiver = await  UserRepository.findById(receiverUserId);
+  const sender = await  UserRepository.findById(senderUserId, "username realname profilePic");
+  if (!receiver || !sender) throw new Error("User not found");
+
+  if (!receiver.friendrequests) receiver.friendrequests = [];
+
+  receiver.friendrequests = receiver.friendrequests.filter(
+    req => !(req.from?.toString() === senderUserId.toString() && req.status === "declined")
+  );
+
+  const existingRequest = receiver.friendrequests.find(
+    req => req.from?.toString() === senderUserId.toString() && req.status === "pending"
+  );
+
+  if (existingRequest) {
+    receiver.friendrequests = receiver.friendrequests.filter(
+      req => req.from?.toString() !== senderUserId.toString()
+    );
+    sender.sentrequests = sender.sentrequests.filter(
+      req => req.to?.toString() !== receiverUserId.toString()
+    )
+    await FriendRepository.saveUser(receiver);
+    await FriendRepository.saveUser(sender);
+    await FriendRepository.deleteFriendNotifications(senderUserId, receiverUserId);
+    await NotificatrionRepository.delete({
+      sender: senderUserId,
+      receiver: receiverUserId,
+      type: "friend_request"
+    });
+
+    io.to(receiverUserId.toString()).emit("notificationRemoved", {
+      sender: senderUserId,
+      type: "friend_request"
+    });
+    return { success: true, message: "Friend request cancelled" };
+  }
+
+  // Add new friend request
+  receiver.friendrequests.push({
+    from: senderUserId,
+    status: "pending",
+    username: sender.username,
+    realname: sender.realname,
+    profilePic: sender.profilePic
+  });
+
+    sender.sentrequests.push({
+    to: receiverUserId,
+    username: receiver.username,
+    realname: receiver.realname,
+    profilePic: receiver.profilePic
+  });
+
+  await FriendRepository.saveUser(receiver);
+  await FriendRepository.saveUser(sender);
+
+
+  const notification = await NotificatrionRepository.create({
+    sender: senderUserId,
+    receiver: receiverUserId,
+    type: "friend_request",
+    metadata: {
+      username: sender.username,
+      realname: sender.realname,
+      profilePic: sender.profilePic
+    }
+  });
+
+  io.to(receiverUserId.toString()).emit("newNotification", {
+    message: "You have a new friend request",
+    notification
+  });
+
+  return { success: true, message: "Friend request sent" };
+}
+
+
+ static async respondToFriendRequest(receiverUserId, senderUserId, action, io) {
+  const receiver = await  UserRepository.findById(receiverUserId);
+  const sender = await  UserRepository.findById(senderUserId);
+  if (!receiver || !sender) throw new Error("User not found");
+
+  if (!receiver.friendrequests) receiver.friendrequests = [];
+
+  const requestIndex = receiver.friendrequests.findIndex(
+    req => req.from?.toString() === senderUserId.toString() && req.status === "pending"
+  );
+    const sentIndex = sender.sentrequests.findIndex(r => r.to?.toString() === receiverUserId.toString());
+
+  if (requestIndex === -1) throw new Error("No pending friend request from this user");
+
+  const request = receiver.friendrequests[requestIndex];
+
+  if (action === "accept") {
+    // Update FriendList for both users
+    await FriendList.findOneAndUpdate(
+      { user: receiver._id },
+      { $addToSet: { friends: { _id: sender._id, username: sender.username, profilePic: sender.profilePic, realname: sender.realname, addedAt: new Date() } } },
+      { upsert: true }
+    );
+
+    await FriendList.findOneAndUpdate(
+      { user: sender._id },
+      { $addToSet: { friends: { _id: receiver._id, username: receiver.username, profilePic: receiver.profilePic, realname: receiver.realname, addedAt: new Date() } } },
+      { upsert: true }
+    );
+
+    // Do not modify `User.friends` anymore; `FriendList` is authoritative
+
+        receiver.friendrequests.splice(requestIndex, 1);
+        if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+        
+
+    await redis.del(`user:${receiverUserId}:friends`);
+    await redis.del(`user:${senderUserId}:friends`);
+
+
+    await FriendRepository.saveUser(receiver);
+    await FriendRepository.saveUser(sender);
+
+NotificatrionRepository.delete({
+  sender: senderUserId,
+  receiver: receiverUserId,
+  type: "friend_request"
+}).catch(err => console.error("Notification deletion error:", err));
+
+
+    const notification = await NotificatrionRepository.create({
+      receiver: senderUserId,
+      sender: receiverUserId,
+      type: "friend_accept"
+    });
+    
+    io.to(senderUserId.toString()).emit("newNotification", {
+      message: "Your friend request was accepted",
+      notification
+    });
+
+    return { success: true, message: "Friend request accepted" };
+  }
+
+  if (action === "decline") {
+    receiver.friendrequests.splice(requestIndex, 1);
+        if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+
+    await FriendRepository.saveUser(receiver);
+
+    await NotificatrionRepository.delete(senderUserId, receiverUserId);
+
+    return { success: true, message: "Friend request declined" };
+  }
+
+  throw new Error("Invalid action");
+}
+
+static async removeFriend(userId, friendId, io) {
+  if (!userId || !friendId) throw new Error("User ID or Friend ID missing");
+  if (userId.toString() === friendId.toString())
+    throw new Error("Cannot remove yourself");
+
+  const user = await  UserRepository.findById(userId);
+  const friend = await  UserRepository.findById(friendId);
+
+  if (!user || !friend) throw new Error("User not found");
+
+  // Remove friend from FriendList collection
+  await FriendList.findOneAndUpdate({ user: userId }, { $pull: { friends: { _id: friendId } } });
+  await FriendList.findOneAndUpdate({ user: friendId }, { $pull: { friends: { _id: userId } } });
+
+  // `User.friends` is no longer maintained
+
+await NotificatrionRepository.delete({
+  $or: [
+    { sender: userId, receiver: friendId },
+    { sender: friendId, receiver: userId }
+  ]
+});
+
+  // Emit real-time update (optional)
+  if (io) {
+    io.to(userId.toString()).emit("friendRemoved", { friendId });
+    io.to(friendId.toString()).emit("friendRemoved", { friendId: userId });
+  }
+
+  return { success: true, message: "Friend removed successfully" };
+}
+
+
+}
+
+module.exports = FriendService;

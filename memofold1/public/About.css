@@ -1,0 +1,274 @@
+/* Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #fdfdfd;
+  color: #333;
+  line-height: 1.6;
+}
+
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* Header Styles */
+.header {
+  background-color: #ffffff;
+  border-bottom: 1px solid hsl(0, 0%, 87%);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Logo & Slogan */
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.logo-text {
+  font-size: 2.2rem;
+  font-family: 'Billabong', cursive;
+  color: #000;
+  line-height: 1;
+}
+
+.slogan {
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 0.2rem;
+  font-style: italic;
+}
+
+/* Login Button */
+.login {
+  cursor: pointer;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(to right, #0072ff, #00c6ff);
+  color: white;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 1rem;
+  transition: background 0.3s ease, color 0.3s ease;
+  border: none;
+  text-decoration: none;
+}
+
+.login-btn:hover {
+  background: linear-gradient(to right, #00c6ff, #0072ff);
+  color: #fff;
+}
+
+.login-icon,
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Hero Section */
+.hero {
+  background: linear-gradient(135deg, #e0f7fa, #ffffff);
+  padding: 4rem 0;
+}
+
+.hero-content {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.hero-img {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 12px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.hero-img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.12);
+}
+
+.text-block {
+  flex: 1;
+}
+
+.text-block h1 {
+  font-size: 2.8rem;
+  color: #0077cc;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.text-block p {
+  font-size: 1.15rem;
+  color: #555;
+  max-width: 600px;
+}
+
+/* Split Sections */
+.split-section {
+  background-color: #ffffff;
+  padding: 4rem 0;
+}
+
+.split-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.split-content.reverse {
+  flex-direction: row-reverse;
+}
+
+.section-img {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  flex: 1;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.section-img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+}
+
+.text-block h2 {
+  font-size: 2rem;
+  color: #005792;
+  margin-bottom: 0.75rem;
+}
+
+.text-block p {
+  font-size: 1.05rem;
+  color: #555;
+  max-width: 500px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .text-block h1 {
+    font-size: 2.4rem;
+  }
+
+  .text-block h2 {
+    font-size: 1.8rem;
+  }
+
+  .text-block p {
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .hero-content,
+  .split-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .text-block {
+    text-align: center;
+  }
+
+  .text-block h1 {
+    font-size: 2rem;
+  }
+
+  .text-block h2 {
+    font-size: 1.6rem;
+  }
+
+  .text-block p {
+    font-size: 1rem;
+  }
+
+  .login-icon,
+  .avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .logo-text {
+    font-size: 1.8rem;
+  }
+
+  .slogan {
+    font-size: 0.8rem;
+  }
+
+  .login-btn {
+    font-size: 0.95rem;
+    padding: 6px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .text-block h1 {
+    font-size: 1.6rem;
+  }
+
+  .text-block h2 {
+    font-size: 1.4rem;
+  }
+
+  .text-block p {
+    font-size: 0.95rem;
+  }
+
+  .hero-img,
+  .section-img {
+    max-width: 100%;
+  }
+
+  .login-btn {
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+    text-align: center;
+  }
+
+  .login-icon,
+  .avatar {
+    margin-right: 0.5rem;
+  }
+}

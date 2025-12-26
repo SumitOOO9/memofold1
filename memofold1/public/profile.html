@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemoFold Profile</title>
+  <link rel="stylesheet" href="style_13.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="logo-container">
+      <img src="logo.png" alt="MemoFold Logo" class="logo-img">
+    </div>
+    <a href="#" class="navbar-post-btn">
+      <i class="fas fa-plus-circle"></i>
+      Create Post
+    </a>
+  </nav>
+
+  <!-- Profile Section -->
+  <div class="profile-container">
+    <div class="profile-header">
+      <form id="profilePicForm" enctype="multipart/form-data">
+        <label for="profilePicUpload">
+          <img id="displayProfilePic" class="profile-pic" src="https://ui-avatars.com/api/?name=User&background=random"
+            alt="Profile Picture">
+
+        </label>
+        <input type="file" id="profilePicUpload" name="profilePic" accept="image/*" style="display: none;" />
+      </form>
+
+      <div class="profile-info">
+        <h2 id="profile-username">@your_username</h2>
+        <p id="profile-name" class="real-name">Real Name</p>
+
+        <p class="bio">Visual storyteller. Passion meets pixels. ✨</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ New Section -->
+  <section class="user-posts-container">
+
+    <div id="userPosts" class="posts-grid">
+      <!-- Posts will be inserted here by JS -->
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

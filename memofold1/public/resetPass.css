@@ -1,0 +1,160 @@
+/* Reset default styles and set font */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Body with a soft gradient and centering */
+body {
+  background: linear-gradient(to right, #dbeafe, #e0f2fe);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* Container styling */
+.reset-container {
+  background-color: white;
+  padding: 40px 30px;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  transition: all 0.3s ease-in-out;
+}
+
+/* Inner content box */
+.reset-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo + brand styling in one line */
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.brand h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: 0.5px;
+}
+
+/* Heading */
+h2 {
+  color: #007bff;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Subtext */
+p {
+  color: #555;
+  font-size: 15px;
+  margin-bottom: 22px;
+  padding: 0 10px;
+}
+
+/* Input styling */
+form input {
+  width: 100%;
+  padding: 14px;
+  margin: 10px 0;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+form input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Primary button */
+.reset-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(to right, #007bff, #00c6ff);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.reset-btn:hover {
+  transform: scale(1.03);
+  opacity: 0.95;
+}
+
+/* Back button */
+.back-btn {
+  margin-top: 25px;
+  padding: 12px 24px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 30px;
+  font-size: 15px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #e5e7eb;
+  transform: scale(1.02);
+}
+
+/* Responsive design */
+@media (max-width: 500px) {
+  .reset-container {
+    padding: 30px 20px;
+  }
+
+  .brand h1 {
+    font-size: 20px;
+  }
+
+  .logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  h2 {
+    font-size: 18px;
+  }
+
+  p {
+    font-size: 14px;
+  }
+
+  .reset-btn,
+  .back-btn {
+    font-size: 14px;
+  }
+}

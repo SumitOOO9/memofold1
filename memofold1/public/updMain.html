@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile Dashboard</title>
+  <link rel="stylesheet" href="style_5.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+
+<body>
+  <div class="main">
+    <div class="topbar">
+      <!-- Modern Hamburger Menu -->
+      <div class="settings-dropdown">
+        <div class="dropdown">
+          <button class="comment-btn"><i class="fas fa-bars"></i></button>
+          <div class="dropdown-content settings">
+            <span><i class="fas fa-user-circle"></i> Profile</span>
+            <!-- <span><i class="fas fa-shield-alt"></i> Privacy</span>
+            <span><i class="fas fa-file-export"></i> Export Data</span>
+            <span><i class="fas fa-user-slash"></i> Delete Account</span> -->
+            <span>
+              <i class="fas fa-moon"></i> Dark Mode
+              <label class="switch">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="slider"></span>
+              </label>
+            </span>
+            <!-- <span><i class="fas fa-user-plus"></i> Invite</span>
+            <span><i class="fas fa-circle-info"></i> Help</span> -->
+            <span class="feedback-option"><i class="fas fa-comment-dots"></i> Feedback</span> <!-- Newly added -->
+          </div>
+        </div>
+      </div>
+
+      <div class="search-home-wrapper">
+        <button class="home-button" id="homeBtn" title="Home">
+          <i class="fas fa-home"></i>
+        </button>
+        <!-- <input type="text" class="search-bar" placeholder="Search..." /> -->
+      </div>
+            <input type="date" class="calendar-picker" id="calendar" min="1950-01-01" max="2025-12-31" />
+      <a href="mainFeed.html" class="top-icon" title="Main Feed">📰</a>
+
+      <!-- <span class="top-icon" title="Notifications">&#128276;</span>
+      <span class="top-icon" title="Friend Requests">&#128101;</span> -->
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content-center">
+        <section class="post-box">
+          <textarea id="postContent" placeholder="Write your post..."></textarea>
+          <div class="icons">
+            <span class="icon like" title="Like">&#10084;</span>
+            <div class="dropdown">
+              <button class="comment-btn">💬 Comment</button>
+              <div class="dropdown-content">
+                <span>Congrats 🎉</span>
+                <span>Sorrow 😭</span>
+                <span>LOL 😂</span>
+                <span>Love ❤️</span>
+                <span>Interesting 🤔</span>
+              </div>
+            </div>
+            <!-- <span class="icon link" id="attachBtn" title="Attach File">📎</span>
+            <input type="file" id="fileInput" style="display:none;" /> -->
+            <span class="icon download" id="deleteBtn" title="Delete">🗑</span>
+          </div>
+          <button id="postButton" type="button">Post</button>
+          <div id="charCount">0 characters</div>
+        </section>
+
+        <section class="post">
+          <p id="selectedDateLabel">Date: </p>
+          <small id="timeLabel">Time: --:--:--</small>
+        </section>
+
+
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,79 @@
+const User = require("../models/user");
+const Profile = require("../models/profile");
+const cache = require("../utils/cache");
+class UserRepository {
+static async findById(userId) {
+  return User.findById(userId).select("-password");
+}
+static async findByIds(userIds = []) {
+  return User.find({ _id: { $in: userIds } }).select("-password").lean();
+}
+
+
+ static async findOne(cond) {
+    return User.findOne(cond).lean();
+  }
+
+ static async updateUserFields(userId, userUpdates = {}, session = null) {
+    if (!userUpdates || Object.keys(userUpdates).length === 0) {
+      return User.findById(userId).select("-password");
+    }
+    const opts = { new: true, runValidators: true };
+    if (session) opts.session = session;
+    return User.findByIdAndUpdate(userId, { $set: userUpdates }, opts).select("-password");
+  }
+
+ static async updateProfile(userId, profileUpdates = {}, session = null) {
+    if (!profileUpdates || Object.keys(profileUpdates).length === 0) {
+      return Profile.findOne({ user: userId });
+    }
+    const opts = { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true };
+    if (session) opts.session = session;
+    return Profile.findOneAndUpdate({ user: userId }, { $set: profileUpdates }, opts);
+  }
+
+ static async findProfile(userId) {
+    return Profile.findOne({ user: userId });
+  }
+
+  static async findUserWithProfile(userId){
+    const user = await User.findById(userId).select("profilePic username");
+    return{
+      profilepic: user.profilePic,
+      username: user.username
+    }
+  }
+
+static async searchUsers(query, limit = 10) {
+  const regex = new RegExp(`^${query}`, 'i'); 
+  const users = await User.find({
+    $or: [
+      { username: regex },
+      { realname: regex } 
+    ]
+  })
+  .limit(limit)
+  .select('username fullName profilePic'); 
+
+  return users.map(user => ({
+    userId: user._id.toString(),
+    username: user.username,
+    realname: user.realname,
+    profilePic: user.profilePic || ''
+  }));
+}
+  static async updateUserIndex(userId, data) {
+    const cacheKey = `user:${userId}`;
+    const cached = await cache.get(cacheKey);
+    let parsed = cached ? cached : {};
+    parsed.user = {
+      ...parsed.user,
+      ...data,
+    };
+    cache.set(cacheKey, JSON.stringify(parsed), 13);
+    return true;
+  }
+}
+
+
+module.exports = UserRepository;
