@@ -38,14 +38,7 @@ const userSchema = new mongoose.Schema(
     },
     tokenVersion: { type: Number, default: 0 },
 
-  friends: [
-  {
-    _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // reference to the User
-    username: { type: String },
-    realname: { type: String },
-    profilePic: { type: String }
-  }
-],
+  // `friends` have been moved to a separate `FriendList` collection. Removed here.
 
     friendrequests: {
       type:[

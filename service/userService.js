@@ -78,7 +78,10 @@ static async updateUserAndProfileAtomic(
       userRepository.findProfile(userId),
       postRepository.countPostsByUserId({ userId })
     ])
-    const friendsCount = user.friends?.length || 0;
+      // Use FriendList collection for friends count
+      const FriendRepository = require('../repositories/friendRepository');
+      const friendListDoc = await FriendRepository.getFriendListByUserId(userId);
+      const friendsCount = friendListDoc?.friends?.length || 0;
     // console.log("user", user);
     const result = { user, profile, stats:{
       postCount,
