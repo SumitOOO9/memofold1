@@ -3,7 +3,7 @@ const PushSubscription = require("../models/PushSubscription");
 exports.subscribe = async (req, res) => {
   try {
     const { subscription } = req.body;
-
+    console.log("Received subscription:", subscription);
     if (!subscription)
       return res.status(400).json({ success: false });
 
