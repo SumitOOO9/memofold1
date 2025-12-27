@@ -5,10 +5,7 @@ const friendListSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     friends: [
       {
-        _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        username: { type: String },
-        realname: { type: String },
-        profilePic: { type: String },
+        friendId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         addedAt: { type: Date, default: Date.now }
       }
     ]
