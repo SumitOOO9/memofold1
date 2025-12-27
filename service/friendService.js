@@ -2,33 +2,81 @@ const FriendRepository = require('../repositories/friendRepository');
 const redis = require('../utils/cache'); 
 const NotificatrionRepository = require('../repositories/notififcationRepository');
 const UserRepository = require('../repositories/UserRepository');
+const FriendList = require('../models/friendList');
 class FriendService {
 static async getFriends(userId, limit = 10, cursor = null) {
-  const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
-  // let cached = await redis.get(cacheKey);
-  // if (cached) {
-  //     return cached;
-  //   }
+  // const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
 
-  const user = await UserRepository.findById(userId);
-  let friends = user.friends || [];
-  // console.log("friends", friends);
-  friends.sort((a, b) => b._id.toString().localeCompare(a._id.toString()));
+  const friendListDoc = await FriendRepository.getFriendListByUserId(userId);
+
+  let friendsArr = Array.isArray(friendListDoc?.friends)
+    ? [...friendListDoc.friends]
+    : [];
+
+  console.log(`Total friends before pagination:`, friendsArr.length);
+
+  friendsArr.sort((a, b) => {
+    return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+  });
+
+  console.log(`Total friends after sorting:`, friendsArr.length);
 
   if (cursor) {
-    const cursorIndex = friends.findIndex(f => f._id.toString() === cursor);
-    if (cursorIndex >= 0) {
-      friends = friends.slice(cursorIndex + 1);
+    const cursorIndex = friendsArr.findIndex(
+      f => f?._id?.toString() === cursor
+    );
+    if (cursorIndex !== -1) {
+      friendsArr = friendsArr.slice(cursorIndex + 1);
     }
   }
-  // console.log("paginated friends", friends);
-  const paginated = friends.slice(0, limit);
-  const nextCursor = paginated.length > 0 ? paginated[paginated.length - 1]._id : null;
 
-  await redis.set(cacheKey, JSON.stringify({ friendsList: paginated, nextCursor, total: friends.length }), 'EX', 6000);
+  const paginated = friendsArr.slice(0, limit);
+  const nextCursor =
+    paginated.length > 0
+      ? paginated[paginated.length - 1]._id.toString()
+      : null;
 
-  return { friendsList: paginated, nextCursor, total: friends.length };
+  const friendIds = paginated.map(f => f._id);
+  console.log(`Fetching user details for friend IDs:`, friendIds);
+
+  const users = friendIds.length
+    ? await UserRepository.findByIds(friendIds)
+    : [];
+
+  const userMap = new Map();
+  users.forEach(u => userMap.set(u._id.toString(), u));
+
+  const friendsList = paginated.map(f => {
+    const uid = f._id.toString();
+    const u = userMap.get(uid);
+
+    return {
+      id: uid,
+      username: u?.username || '',
+      realname: u?.realname || '',
+      profilePic: u?.profilePic || '',
+      addedAt: f.addedAt
+    };
+  });
+
+  // await redis.set(
+  //   cacheKey,
+  //   JSON.stringify({
+  //     friendsList,
+  //     nextCursor,
+  //     total: friendsArr.length
+  //   }),
+  //   'EX',
+  //   6000
+  // );
+
+  return {
+    friendsList,
+    nextCursor,
+    total: friendsArr.length
+  };
 }
+
 
  static async toggleFriendRequest(senderUserId, receiverUserId, io) {
   if (!senderUserId || !receiverUserId) throw new Error("Sender or receiver ID missing");
@@ -129,18 +177,20 @@ static async getFriends(userId, limit = 10, cursor = null) {
   const request = receiver.friendrequests[requestIndex];
 
   if (action === "accept") {
-    receiver.friends.addToSet({
-      _id: sender._id,
-      username: sender.username,
-      profilePic: sender.profilePic,
-      realname: sender.realname
-    });
-    sender.friends.addToSet({
-      _id: receiver._id,
-      username: receiver.username,
-      profilePic: receiver.profilePic,
-      realname: receiver.realname
-    });
+    // Update FriendList for both users
+    await FriendList.findOneAndUpdate(
+      { user: receiver._id },
+      { $addToSet: { friends: { friendId: sender._id, addedAt: new Date() } } },
+      { upsert: true }
+    );
+
+    await FriendList.findOneAndUpdate(
+      { user: sender._id },
+      { $addToSet: { friends: { friendId: receiver._id, addedAt: new Date() } } },
+      { upsert: true }
+    );
+
+    // Do not modify `User.friends` anymore; `FriendList` is authoritative
 
         receiver.friendrequests.splice(requestIndex, 1);
         if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
@@ -198,12 +248,11 @@ static async removeFriend(userId, friendId, io) {
 
   if (!user || !friend) throw new Error("User not found");
 
-  // Remove friend from both sides
-  user.friends = user.friends.filter(f => f._id.toString() !== friendId.toString());
-  friend.friends = friend.friends.filter(f => f._id.toString() !== userId.toString());
+  // Remove friend from FriendList collection
+  await FriendList.findOneAndUpdate({ user: userId }, { $pull: { friends: { friendId: friendId } } });
+  await FriendList.findOneAndUpdate({ user: friendId }, { $pull: { friends: { friendId: userId } } });
 
-  await FriendRepository.saveUser(user);
-  await FriendRepository.saveUser(friend);
+  // `User.friends` is no longer maintained
 
 await NotificatrionRepository.delete({
   $or: [
