@@ -35,11 +35,11 @@ class FriendRepository {
     );
   }
 
-  static async getfriendBYFriendId(userId, otherUserId) {
+ static async getfriendBYFriendId(userId, otherUserId) {
     const friend = await FriendList.findOne({ user: userId }, {
-      friends: { $elemMatch: { friendId: otherUserId } }
+      friends: { $elemMatch: { _id: otherUserId } }
     });
-    // console.log("friend in repo",friend);
+    console.log("friend in repo",friend);
     return friend;
   }
 }
