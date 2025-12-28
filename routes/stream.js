@@ -7,5 +7,4 @@ const { authenticate } = require('../middleware/authMiddleware');
 
 // POST /api/stream/sync-profile-pics
 router.post('/sync-profile-pics', authenticate, syncAllProfilePics);
-
 module.exports = router;

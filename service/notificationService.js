@@ -56,6 +56,7 @@ class NotificationService {
 
   // Delete notifications (e.g., friend requests declined)
   static async deleteNotifications(filter) {
+    console.log("Deleting notifications with filter:", filter);
     const result = await NotificationRepository.delete(filter);
     if (filter.receiver) {
       await redis.del(`user:${filter.receiver}:notifications`);

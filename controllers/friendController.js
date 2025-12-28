@@ -42,3 +42,14 @@ exports.getFriendsList = async (req,res) =>{
     res.status(500).json({success:false, message: error.message})
   }
 }
+
+exports.isFriend = async (req, res) => {
+  try{
+    const userId = req.user.id;
+    const otherUserId = req.params.otherUserId;
+    const isFriend = await FriendService.isFriend(userId, otherUserId);
+    res.status(200).json({success:true, isFriend});
+  } catch(err){
+    res.status(500).json({success:false, message: err.message});
+  }
+}
