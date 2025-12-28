@@ -12,6 +12,7 @@ const userRoutes = require("./routes/userRoutes");
 const friendRoutes = require("./routes/friendRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const streamRoutes = require("./routes/stream");
 const pushRoutes = require("./routes/pushRoute");
 const cookieParser = require("cookie-parser");
 
@@ -69,6 +70,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/push", pushRoutes);
 // app.use("/api/profile", profileRoutes);
+app.use("/api/stream", streamRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 

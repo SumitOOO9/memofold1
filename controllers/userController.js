@@ -16,6 +16,18 @@ exports.uploadProfilePic = async (req, res) => {
     }
     const updatedUser = await UserService.updateUserFields(req.user.id, { profilePic: req.imageUrl });
 
+    try {
+      const { upsertStreamUser } = require("../lib/stream");
+      await upsertStreamUser({
+        id: req.user.id.toString(),
+        name: updatedUser.realname || updatedUser.username,
+        image: updatedUser.profilePic || null,
+        role: "user",
+      });
+    } catch (err) {
+      console.error("❌ Stream upsert failed during profilePic upload:", err.message);
+    }
+
     res.json({
       profilePicUrl: updatedUser.profilePic
     });
