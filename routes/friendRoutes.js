@@ -8,4 +8,5 @@ router.post("/friend-request/:reciverUserId", authenticate, friendController.tog
 router.post("/friend-request/:reciverUserId/respond", authenticate, friendController.respondToRequest);
 router.get("/friends-list", authenticate, friendController.getFriendsList)
 router.delete("/remove-friend/:friendId", authenticate, friendController.removeFriend)
+router.get("/isFriend/:otherUserId", authenticate, friendController.isFriend)
 module.exports = router;

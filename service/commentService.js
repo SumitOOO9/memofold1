@@ -5,6 +5,7 @@ const PostRepository = require('../repositories/postRepository');
 const UserRepository = require('../repositories/UserRepository');
 const PostService = require('./postService');
 const NotificationService = require('./notificationService');
+const { Types } = require('mongoose');
 class CommentService {
 
 static async createComment({ content, postId, userId, parentCommentId }, io) {
@@ -38,44 +39,23 @@ io.to(`post:${postId}`).emit("newComment", {
 });
     // Notification
     // const post = await PostRepository.findById(postId); 
-    if (post.userId.toString() !== userId.toString())  {
-      const user = await UserRepository.findById(userId); // use repository
-       await NotificationService.createNotification({
-        receiver: post.userId,
-        sender: userId,
-        type: parentCommentId ? "reply" : "comment",
+   if (post.userId.toString() !== userId.toString()) {
+  const payload =
+    await CommentService.buildCommentNotificationPayload({
+      receiverId: post.userId,
+      senderId: userId,
+      type: parentCommentId ? "reply" : "comment",
+      post,
+      commentCount: post.commentCount
+    });
 
-        title: "New Comment",
-        message: parentCommentId
-          ? `${user.username} replied to a comment on your post`
-          : `${user.username} commented on your post`,
+    console.log("payload",payload);
 
-        metadata: {
-          actor: {
-            username: user.username,
-            realname: user.realname,
-            profilePic: user.profilePic,
-          },
-          post: {
-            id: post._id,
-            content: post.content,
-            image: post.image || null,
-            video: post.video || null,
-          },
-          comment: {
-            id: comment._id,
-            content: comment.content,
-            isReply: !!parentCommentId,
-            parentCommentId: parentCommentId || null,
-          },
-        },
-      });
-      io.to(post.userId.toString()).emit("newNotification", {
-        message: parentCommentId
-          ? `${user.username} replied to a comment on your post`
-          : `${user.username} commented on your post`,
-      });
-    }
+  await NotificationService.createNotification(payload);
+
+  io.to(post.userId.toString()).emit("newNotification", payload);
+}
+
 
     return comment;
   } catch (err) {
@@ -142,25 +122,43 @@ static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) 
   }
 
 //helper function
-static async buildPostCommentContext({ postId, comment }) {
-  const post = await PostService.getPostById(postId)
-    .select("_id content image video userId");
+static async buildCommentNotificationPayload({
+  receiverId,
+  senderId,
+  type,
+  post,
+  commentCount
+}) {
+  const sender = await UserRepository.findById(senderId);
 
   return {
-    post: {
-      id: post._id,
+    receiver: receiverId,
+    sender: {
+      _id: sender._id,
+      username: sender.username,
+      realname: sender.realname,
+      profilePic: sender.profilePic
+    },
+    type, // "comment" | "reply" | "like"
+    metadata: {
+      username: sender.username,
+      realname: sender.realname,
+      profilePic: sender.profilePic
+    },
+    postid: {
+      _id: post._id,
+      userId: post.userId,
+      username: post.username,
       content: post.content,
-      image: post.image || null,
-      video: post.video || null,
+      image: post.image || "",
+      videoUrl: post.videoUrl || "",
+      commentCount,
+      likeCount: post.likes?.length || 0
     },
-    comment: {
-      id: comment._id,
-      content: comment.content,
-      isReply: !!comment.parentComment,
-      parentCommentId: comment.parentComment || null,
-    },
+    read: false
   };
 }
+
 
 
 static async toggleLike(commentId, userId, io) {
@@ -178,50 +176,32 @@ static async toggleLike(commentId, userId, io) {
   (async () => {
     await redisClient.del(`comments:post:${updatedComment.postId}`);
 
+    console.log("Like action:", action);
+
     if (action === "liked" && updatedComment.userId.toString() !== userId.toString()) {
-      const user = await UserRepository.findById(userId)
-      if (action === "liked") {
-      const context = await CommentService.buildPostCommentContext({
-        postId: updatedComment.postId,
-        comment: updatedComment,
-      });
+  const post = await PostRepository.findById(updatedComment.postId);
 
-      await NotificationService.createNotification({
-        receiver: updatedComment.userId,
-        sender: userId,
-        type: updatedComment.parentComment
-          ? "reply_like"
-          : "comment_like",
+  const payload =
+    await CommentService.buildCommentNotificationPayload({
+      receiverId: updatedComment.userId,
+      senderId: userId,
+      type: "comment_like",
+      post,
+      commentCount: post.commentCount
+    });
 
-        title: "New Like",
-        message: updatedComment.parentComment
-          ? `${user.username} liked your reply`
-          : `${user.username} liked your comment`,
+  await NotificationService.createNotification(payload);
 
-        metadata: {
-          actor: {
-            username: user.username,
-            realname: user.realname,
-            profilePic: user.profilePic,
-          },
-          ...context,
-        },
-      });
-      io.to(updatedComment.userId.toString()).emit("newNotification", {
-        message: `${user.username} liked your ${
-          updatedComment.parentComment ? "reply" : "comment"
-        }`,
-      });
-    }
-    } else if (action === "unliked") {
-      await NotificationService.deleteNotifications({
-        receiver: updatedComment.userId,
-        sender: userId,
-        type: updatedComment.parentComment
-          ? "reply_like"
-          : "comment_like",
-        "metadata.comment.id": updatedComment._id,
-      });
+  io.to(updatedComment.userId.toString()).emit("newNotification", payload);
+}
+ else if (action === "unliked") {
+await NotificationService.deleteNotifications({
+  receiver: updatedComment.userId.toString(), // string
+  sender: userId.toString(),                  // string
+  type: updatedComment.parentComment ? "reply_like" : "comment_like"
+});
+
+
     }
   })();
 
@@ -261,10 +241,13 @@ static async toggleLike(commentId, userId, io) {
   try {
         let totalDeleted = 1;
 const allCommentIds = [commentId];
+const allCommentUserIds = [comment.userId._id.toString()];
+
     const deleteRepliesRecursively = async (parentId) => {
       const replies = await CommentRepository.findReplies(parentId, 1000); // get all
       for (let r of replies) {
                 allCommentIds.push(r._id);
+    allCommentUserIds.push(r.userId._id.toString());  
 
                 totalDeleted++;
         await deleteRepliesRecursively(r._id);
@@ -286,11 +269,14 @@ const updatedPost = await CommentRepository.updateCommentCount(postId, allCommen
 
       // Delete notifications related to the deleted comment(s)
       try {
-        await NotificationService.deleteNotifications({
-          "metadata.comment.id": { $in: allCommentIds }
-        });
+       await NotificationService.deleteNotifications({
+   type: { $in: ["comment", "reply"] },
+    postid: postId,
+    sender: { $in: allCommentUserIds }// the users who authored the deleted comments
+});
+        console.log('Deleted notifications for comments', allCommentIds);
       } catch (e) {
-        // console.error('Failed to delete notifications for comments', allCommentIds, e);
+        console.error('Failed to delete notifications for comments', allCommentIds, e);
       }
 
       await redisClient.del(`comments:post:${postId}`);

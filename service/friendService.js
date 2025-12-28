@@ -12,29 +12,32 @@ static async getFriends(userId, limit = 10, cursor = null) {
   let friendsArr = Array.isArray(friendListDoc?.friends)
     ? [...friendListDoc.friends]
     : [];
+    const total = friendsArr.length;
 
-  console.log(`Total friends before pagination:`, friendsArr.length);
+  console.log(`Total friends before pagination:`, total);
 
-  friendsArr.sort((a, b) => {
-    return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
-  });
+friendsArr.sort((a, b) =>
+  b._id.toString().localeCompare(a._id.toString())
+);
+
 
   console.log(`Total friends after sorting:`, friendsArr.length);
 
-  if (cursor) {
-    const cursorIndex = friendsArr.findIndex(
-      f => f?._id?.toString() === cursor
-    );
-    if (cursorIndex !== -1) {
-      friendsArr = friendsArr.slice(cursorIndex + 1);
-    }
-  }
+if (cursor) {
+  friendsArr = friendsArr.filter(
+    f => f._id.toString() < cursor
+  );
+}
+
+
 
   const paginated = friendsArr.slice(0, limit);
   const nextCursor =
-    paginated.length > 0
-      ? paginated[paginated.length - 1]._id.toString()
-      : null;
+  paginated.length === limit
+    ? paginated[paginated.length - 1]._id.toString()
+    : null;
+
+
 
   const friendIds = paginated.map(f => f._id);
   console.log(`Fetching user details for friend IDs:`, friendIds);
@@ -73,7 +76,7 @@ static async getFriends(userId, limit = 10, cursor = null) {
   return {
     friendsList,
     nextCursor,
-    total: friendsArr.length
+    total
   };
 }
 
@@ -270,6 +273,18 @@ await NotificatrionRepository.delete({
   return { success: true, message: "Friend removed successfully" };
 }
 
+static async isFriend(userId, otherUserId) {
+  try{
+    const friend = await FriendRepository.getfriendBYFriendId(userId, otherUserId);
+    if(!friend.friends || friend.friends.length ===0){
+      return false;
+    }
+    return true;
+  } catch(err){
+    console.error("Error checking friendship status:", err);
+    return false;
+  }
+}
 
 }
 
