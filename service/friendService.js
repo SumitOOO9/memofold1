@@ -181,17 +181,9 @@ if (cursor) {
 
   if (action === "accept") {
     // Update FriendList for both users
-    await FriendList.findOneAndUpdate(
-      { user: receiver._id },
-      { $addToSet: { friends: { friendId: sender._id, addedAt: new Date() } } },
-      { upsert: true }
-    );
-
-    await FriendList.findOneAndUpdate(
-      { user: sender._id },
-      { $addToSet: { friends: { friendId: receiver._id, addedAt: new Date() } } },
-      { upsert: true }
-    );
+    console.log("Adding friends to FriendList collections", sender._id, receiver._id);
+    await FriendRepository.addFriend(receiver._id, sender._id);
+  await FriendRepository.addFriend(sender._id, receiver._id);
 
     // Do not modify `User.friends` anymore; `FriendList` is authoritative
 
@@ -203,10 +195,10 @@ if (cursor) {
     await redis.del(`user:${senderUserId}:friends`);
 
 
-    await FriendRepository.saveUser(receiver);
-    await FriendRepository.saveUser(sender);
+    // await FriendRepository.saveUser(receiver);
+    // await FriendRepository.saveUser(sender);
 
-NotificatrionRepository.delete({
+NotificatrionRepository.delete({  
   sender: senderUserId,
   receiver: receiverUserId,
   type: "friend_request"
@@ -246,14 +238,8 @@ static async removeFriend(userId, friendId, io) {
   if (userId.toString() === friendId.toString())
     throw new Error("Cannot remove yourself");
 
-  const user = await  UserRepository.findById(userId);
-  const friend = await  UserRepository.findById(friendId);
-
-  if (!user || !friend) throw new Error("User not found");
-
-  // Remove friend from FriendList collection
-  await FriendList.findOneAndUpdate({ user: userId }, { $pull: { friends: { friendId: friendId } } });
-  await FriendList.findOneAndUpdate({ user: friendId }, { $pull: { friends: { friendId: userId } } });
+  await FriendRepository.removeFriend(userId, friendId);
+  await FriendRepository.removeFriend(friendId, userId);
 
   // `User.friends` is no longer maintained
 

@@ -42,6 +42,50 @@ class FriendRepository {
     console.log("friend in repo",friend);
     return friend;
   }
+
+   static async getFriendListByUserId(userId) {
+    return await FriendList.findOne({ user: userId });
+  }
+
+  static async addFriend(userId, friendId) {
+    let doc = await FriendList.findOne({ user: userId });
+
+    if (!doc) {
+      doc = new FriendList({
+        user: userId,
+        friends: [{ _id: friendId, addedAt: new Date() }]
+      });
+    } else {
+      const exists = doc.friends.some(
+        f => f._id.toString() === friendId.toString()
+      );
+      if (!exists) {
+        doc.friends.push({ _id: friendId, addedAt: new Date() });
+      }
+    }
+
+    return await doc.save();
+  }
+
+  static async removeFriend(userId, friendId) {
+    const doc = await FriendList.findOne({ user: userId });
+    if (!doc) return;
+
+    doc.friends = doc.friends.filter(
+      f => f._id.toString() !== friendId.toString()
+    );
+
+    return await doc.save();
+  }
+
+  static async isFriend(userId, otherUserId) {
+    const doc = await FriendList.findOne({ user: userId });
+    if (!doc) return false;
+
+    return doc.friends.some(
+      f => f._id.toString() === otherUserId.toString()
+    );
+  }
 }
 
 module.exports = FriendRepository;
