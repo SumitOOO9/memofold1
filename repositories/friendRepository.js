@@ -1,7 +1,6 @@
 const User = require('../models/user');
 const Notification = require('../models/notification');
 const FriendList = require('../models/friendList');
-const FriendList = require('../models/friendList');
 
 class FriendRepository {
   static async saveUser(user) {
