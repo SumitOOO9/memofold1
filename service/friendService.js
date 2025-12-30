@@ -249,7 +249,7 @@ await NotificatrionRepository.delete({
     { sender: friendId, receiver: userId }
   ]
 });
-
+// console.log(`Removed friendship between ${userId} and ${friendId}`);
   // Emit real-time update (optional)
   if (io) {
     io.to(userId.toString()).emit("friendRemoved", { friendId });
