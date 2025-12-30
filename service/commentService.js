@@ -46,7 +46,8 @@ io.to(`post:${postId}`).emit("newComment", {
       senderId: userId,
       type: parentCommentId ? "reply" : "comment",
       post,
-      commentCount: post.commentCount
+      commentCount: post.commentCount,
+      comment
     });
 
     console.log("payload",payload);
@@ -127,23 +128,23 @@ static async buildCommentNotificationPayload({
   senderId,
   type,
   post,
-  commentCount
+  commentCount,
+   comment,
 }) {
   const sender = await UserRepository.findById(senderId);
 
   return {
     receiver: receiverId,
-    sender: {
-      _id: sender._id,
-      username: sender.username,
-      realname: sender.realname,
-      profilePic: sender.profilePic
-    },
+    sender: sender._id,
     type, // "comment" | "reply" | "like"
     metadata: {
       username: sender.username,
       realname: sender.realname,
-      profilePic: sender.profilePic
+      profilePic: sender.profilePic,
+      commentId: comment._id,
+      content: comment.content,              // ✅ ACTUAL COMMENT / REPLY TEXT
+      isReply: !!comment.parentComment,       // true for reply
+      parentCommentId: comment.parentComment || null,
     },
     postid: {
       _id: post._id,
@@ -162,6 +163,8 @@ static async buildCommentNotificationPayload({
 
 
 static async toggleLike(commentId, userId, io) {
+  
+
   const { updatedComment, action } = await CommentRepository.toggleLike(commentId, userId);
 
   // Emit real-time update immediately
@@ -179,15 +182,23 @@ static async toggleLike(commentId, userId, io) {
     console.log("Like action:", action);
 
     if (action === "liked" && updatedComment.userId.toString() !== userId.toString()) {
-  const post = await PostRepository.findById(updatedComment.postId);
+ const [commentDoc, post] = await Promise.all([
+        CommentRepository.findById(updatedComment._id),
+        PostRepository.findById(updatedComment.postId),
+        // redisClient.del(`comments:post:${updatedComment.postId}`)
+      ]);
+  const likeType = updatedComment.parentComment ? "reply_like" : "comment_like";
+  console.log("likeType:", likeType);
+  console.log("post in like notification:", updatedComment.parentComment);
 
   const payload =
     await CommentService.buildCommentNotificationPayload({
       receiverId: updatedComment.userId,
       senderId: userId,
-      type: "comment_like",
+      type: likeType,
       post,
-      commentCount: post.commentCount
+      commentCount: post.commentCount,
+       comment: commentDoc,
     });
 
   await NotificationService.createNotification(payload);
@@ -196,9 +207,10 @@ static async toggleLike(commentId, userId, io) {
 }
  else if (action === "unliked") {
 await NotificationService.deleteNotifications({
-  receiver: updatedComment.userId.toString(), // string
-  sender: userId.toString(),                  // string
-  type: updatedComment.parentComment ? "reply_like" : "comment_like"
+  receiver: updatedComment.userId.toString(),
+  sender: userId.toString(),
+  type: updatedComment.parentComment ? "reply_like" : "comment_like",
+  "metadata.commentId": updatedComment._id
 });
 
 

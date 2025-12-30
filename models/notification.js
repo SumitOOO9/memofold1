@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['like', 'comment', 'friend_request', 'friend_accept', 'comment_like'],
+        enum: ['like', 'reply', 'comment', 'friend_request', 'friend_accept', 'comment_like', 'reply_like'],
         required: true
     },
     postid: {
@@ -27,5 +27,11 @@ const notificationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.Mixed,
     }
 }, { timestamps: true });
+
+
+notificationSchema.index(
+  { sender: 1, receiver: 1, type: 1, "metadata.commentId": 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model('Notification', notificationSchema);
