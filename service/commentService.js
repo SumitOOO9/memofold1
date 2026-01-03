@@ -116,7 +116,13 @@ static async getComments({ postId, limit, cursor = null, sort = '-createdAt' }) 
 
   static async getReplies({ parentCommentId, limit = 10, cursor }) {
     const replies = await CommentRepository.findReplies(parentCommentId, limit, cursor);
-    const nextCursor = replies.length === limit ? replies[replies.length - 1].createdAt.toISOString() : null;
+    const nextCursor =
+    replies.length === limit
+      ? {
+          createdAt: replies[replies.length - 1].createdAt,
+          _id: replies[replies.length - 1]._id
+        }
+      : null;
 
  
     return { replies, nextCursor };

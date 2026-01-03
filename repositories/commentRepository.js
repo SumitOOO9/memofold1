@@ -38,12 +38,18 @@ class CommentRepository {
   static async findReplies(parentCommentId, limit = 10, cursor = null) {
    const match = { parentComment: new mongoose.Types.ObjectId(parentCommentId) };
    if(cursor){
-    match.createdAt = { $lt: new Date(cursor) };
-   }
+    match.$or = [
+      { createdAt: { $gt: new Date(cursor.createdAt) } },
+      {
+        createdAt: new Date(cursor.createdAt),
+        _id: { $gt: new mongoose.Types.ObjectId(cursor._id) }
+      }
+    ];
+     }
    const replies = await Comment.aggregate([
     { $match: match},
-    { $sort: {createdAt: 1, _id: -1}},
-    { $limit: limit},
+    { $sort: { createdAt: 1, _id: 1 } },
+     { $limit: limit},
     { $lookup: {
       from: "users",
       localField: "userId",

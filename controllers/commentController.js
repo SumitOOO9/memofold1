@@ -44,7 +44,15 @@ exports.getReplies = async (req,res) => {
   try{
     const parentCommentId = req.params.commentId;
     const limit = req.query.limit || 10;
-    const cursor = req.query.cursor || null;
+    const { cursorCreatedAt, cursorId } = req.query;
+        const cursor =
+      cursorCreatedAt && cursorId
+        ? {
+            createdAt: cursorCreatedAt,
+            _id: cursorId
+          }
+        : null;
+        
     const {replies, nextCursor} = await CommentService.getReplies({
       parentCommentId,
       limit,
