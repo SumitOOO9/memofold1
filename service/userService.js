@@ -39,10 +39,19 @@ static async updateUserAndProfileAtomic(
 
   if (username) userUpdates.username = username.toLowerCase();
   if (email) userUpdates.email = email;
-  if (description) {
+  if (description !== undefined) {
+    if (description === null) {
+      throw new Error("Description cannot be null");
+    }
+
+    if (typeof description !== "string") {
+      throw new Error("Description must be a string");
+    }
+
     if (description.length > 500) {
       throw new Error("Description cannot exceed 500 characters");
     }
+
     profileUpdates.description = description.trim();
   }
 
