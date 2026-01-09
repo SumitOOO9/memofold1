@@ -9,17 +9,17 @@ static async getFriends(userId, limit = 10, cursor = null, search = null) {
       await FriendRepository.getFriendListByUserId(userId);
 
     let friendsArr = Array.isArray(friendListDoc?.friends)
-      ? [...friendListDoc.friends]
-      : [];
+    ? friendListDoc.friends.map(f => f.toObject()) 
+    : [];
 
     const totalBefore = friendsArr.length;
 
-    // 2. Sort (same logic)
     friendsArr.sort((a, b) =>
       b._id.toString().localeCompare(a._id.toString())
     );
 
-    // 3. Cursor filter (same logic)
+    // console.log("Total friends before filtering:", friendsArr);
+
     if (cursor) {
       friendsArr = friendsArr.filter(
         f => f._id.toString() < cursor
@@ -38,13 +38,14 @@ static async getFriends(userId, limit = 10, cursor = null, search = null) {
       userMap.set(u._id.toString(), u)
     );
 
-    // 5. Attach temp user data
+    // console.log("Fetched user data for friends", allUsers);
+
     friendsArr = friendsArr.map(f => ({
       ...f,
       _userData: userMap.get(f._id.toString())
     }));
 
-    // 6. SEARCH FILTER (NEW)
+    // console.log("Mapped user data to friends", friendsArr);
     if (search) {
       const q = search.toLowerCase();
 
@@ -59,15 +60,11 @@ static async getFriends(userId, limit = 10, cursor = null, search = null) {
 
     const total = friendsArr.length;
 
-    // 7. Pagination (same)
     const paginated = friendsArr.slice(0, limit);
-
     const nextCursor =
       paginated.length === limit
         ? paginated[paginated.length - 1]._id.toString()
         : null;
-
-    // 8. Final response format (same)
     const friendsList = paginated.map(f => {
       const u = f._userData;
 
