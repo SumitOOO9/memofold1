@@ -4,80 +4,87 @@ const NotificatrionRepository = require('../repositories/notififcationRepository
 const UserRepository = require('../repositories/UserRepository');
 const FriendList = require('../models/friendList');
 class FriendService {
-static async getFriends(userId, limit = 10, cursor = null) {
-  // const cacheKey = `user:${userId}:friends:${limit}:${cursor || 'first'}`;
+static async getFriends(userId, limit = 10, cursor = null, search = null) {
+  const friendListDoc =
+      await FriendRepository.getFriendListByUserId(userId);
 
-  const friendListDoc = await FriendRepository.getFriendListByUserId(userId);
+    let friendsArr = Array.isArray(friendListDoc?.friends)
+      ? [...friendListDoc.friends]
+      : [];
 
-  let friendsArr = Array.isArray(friendListDoc?.friends)
-    ? [...friendListDoc.friends]
-    : [];
+    const totalBefore = friendsArr.length;
+
+    // 2. Sort (same logic)
+    friendsArr.sort((a, b) =>
+      b._id.toString().localeCompare(a._id.toString())
+    );
+
+    // 3. Cursor filter (same logic)
+    if (cursor) {
+      friendsArr = friendsArr.filter(
+        f => f._id.toString() < cursor
+      );
+    }
+
+    // 4. Fetch all user data ONCE (needed for search)
+    const allIds = friendsArr.map(f => f._id);
+
+    const allUsers = allIds.length
+      ? await UserRepository.findByIds(allIds)
+      : [];
+
+    const userMap = new Map();
+    allUsers.forEach(u =>
+      userMap.set(u._id.toString(), u)
+    );
+
+    // 5. Attach temp user data
+    friendsArr = friendsArr.map(f => ({
+      ...f,
+      _userData: userMap.get(f._id.toString())
+    }));
+
+    // 6. SEARCH FILTER (NEW)
+    if (search) {
+      const q = search.toLowerCase();
+
+      friendsArr = friendsArr.filter(f => {
+        const u = f._userData;
+        return (
+          u?.username?.toLowerCase().startsWith(q) ||
+          u?.realname?.toLowerCase().startsWith(q)
+        );
+      });
+    }
+
     const total = friendsArr.length;
 
-  console.log(`Total friends before pagination:`, total);
+    // 7. Pagination (same)
+    const paginated = friendsArr.slice(0, limit);
 
-friendsArr.sort((a, b) =>
-  b._id.toString().localeCompare(a._id.toString())
-);
+    const nextCursor =
+      paginated.length === limit
+        ? paginated[paginated.length - 1]._id.toString()
+        : null;
 
+    // 8. Final response format (same)
+    const friendsList = paginated.map(f => {
+      const u = f._userData;
 
-  console.log(`Total friends after sorting:`, friendsArr.length);
-
-if (cursor) {
-  friendsArr = friendsArr.filter(
-    f => f._id.toString() < cursor
-  );
-}
-
-
-
-  const paginated = friendsArr.slice(0, limit);
-  const nextCursor =
-  paginated.length === limit
-    ? paginated[paginated.length - 1]._id.toString()
-    : null;
-
-
-
-  const friendIds = paginated.map(f => f._id);
-  console.log(`Fetching user details for friend IDs:`, friendIds);
-
-  const users = friendIds.length
-    ? await UserRepository.findByIds(friendIds)
-    : [];
-
-  const userMap = new Map();
-  users.forEach(u => userMap.set(u._id.toString(), u));
-
-  const friendsList = paginated.map(f => {
-    const uid = f._id.toString();
-    const u = userMap.get(uid);
+      return {
+        id: f._id.toString(),
+        username: u?.username || '',
+        realname: u?.realname || '',
+        profilePic: u?.profilePic || '',
+        addedAt: f.addedAt
+      };
+    });
 
     return {
-      id: uid,
-      username: u?.username || '',
-      realname: u?.realname || '',
-      profilePic: u?.profilePic || '',
-      addedAt: f.addedAt
+      friendsList,
+      nextCursor,
+      total
     };
-  });
-
-  // await redis.set(
-  //   cacheKey,
-  //   JSON.stringify({
-  //     friendsList,
-  //     nextCursor,
-  //     total: friendsArr.length
-  //   }),
-  //   'EX',
-  //   6000
-  // );
-
-  return {
-    friendsList,
-    nextCursor,
-    total
-  };
 }
 
 
@@ -271,6 +278,7 @@ static async isFriend(userId, otherUserId) {
     return false;
   }
 }
+
 
 }
 

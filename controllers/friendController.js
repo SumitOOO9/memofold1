@@ -35,7 +35,9 @@ exports.getFriendsList = async (req,res) =>{
      const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 10;
     const cursor = req.query.cursor || null;
-     const {friendsList, nextCursor, total} = await FriendService.getFriends(userId, limit, cursor);
+    const search = req.query.search || null;
+
+     const {friendsList, nextCursor, total} = await FriendService.getFriends(userId, limit, cursor, search);
      res.json({success:true, friends: friendsList, nextCursor, total})
 
   } catch(error){
