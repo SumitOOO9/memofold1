@@ -276,6 +276,46 @@ static async isFriend(userId, otherUserId) {
   }
 }
 
+static async getRelationshipStatus(userId, otherUserId) {
+  if (!userId || !otherUserId) throw new Error("User ID missing");
+  if (userId.toString() === otherUserId.toString()) {
+    return {
+      isFriend: false,
+      incomingRequest: false,
+      outgoingRequest: false
+    };
+  }
+
+  const [isFriend, user] = await Promise.all([
+    FriendService.isFriend(userId, otherUserId),
+    UserRepository.findById(userId)
+  ]);
+
+  if (!user) throw new Error("User not found");
+
+  if (isFriend) {
+    return { isFriend: true, incomingRequest: false, outgoingRequest: false };
+  }
+
+  const incomingRequest = Array.isArray(user.friendrequests)
+    ? user.friendrequests.some(
+        req =>
+          req.from?.toString() === otherUserId.toString() &&
+          req.status === "pending"
+      )
+    : false;
+
+  const outgoingRequest = Array.isArray(user.sentrequests)
+    ? user.sentrequests.some(
+        req =>
+          req.to?.toString() === otherUserId.toString() &&
+          req.status === "pending"
+      )
+    : false;
+
+  return { isFriend: false, incomingRequest, outgoingRequest };
+}
+
 
 }
 
