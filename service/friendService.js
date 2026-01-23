@@ -173,6 +173,7 @@ static async getFriends(userId, limit = 10, cursor = null, search = null) {
   if (!receiver || !sender) throw new Error("User not found");
 
   if (!receiver.friendrequests) receiver.friendrequests = [];
+  if (!sender.sentrequests) sender.sentrequests = [];
 
   const requestIndex = receiver.friendrequests.findIndex(
     req => req.from?.toString() === senderUserId.toString() && req.status === "pending"
@@ -192,15 +193,17 @@ static async getFriends(userId, limit = 10, cursor = null, search = null) {
     // Do not modify `User.friends` anymore; `FriendList` is authoritative
 
         receiver.friendrequests.splice(requestIndex, 1);
-        if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+        if (Array.isArray(sender.sentrequests) && sentIndex !== -1) {
+          sender.sentrequests.splice(sentIndex, 1);
+        }
         
 
     await redis.del(`user:${receiverUserId}:friends`);
     await redis.del(`user:${senderUserId}:friends`);
 
 
-    // await FriendRepository.saveUser(receiver);
-    // await FriendRepository.saveUser(sender);
+    await FriendRepository.saveUser(receiver);
+    await FriendRepository.saveUser(sender);
 
 NotificatrionRepository.delete({  
   sender: senderUserId,
@@ -225,9 +228,12 @@ NotificatrionRepository.delete({
 
   if (action === "decline") {
     receiver.friendrequests.splice(requestIndex, 1);
-        if (sentIndex !== -1) sender.sentrequests.splice(sentIndex, 1);
+        if (Array.isArray(sender.sentrequests) && sentIndex !== -1) {
+          sender.sentrequests.splice(sentIndex, 1);
+        }
 
     await FriendRepository.saveUser(receiver);
+    await FriendRepository.saveUser(sender);
 
     await NotificatrionRepository.delete(senderUserId, receiverUserId);
 
