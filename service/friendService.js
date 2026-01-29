@@ -235,7 +235,11 @@ NotificatrionRepository.delete({
     await FriendRepository.saveUser(receiver);
     await FriendRepository.saveUser(sender);
 
-    await NotificatrionRepository.delete(senderUserId, receiverUserId);
+    await NotificatrionRepository.delete({
+      sender: senderUserId,
+      receiver: receiverUserId,
+      type: "friend_request"
+    });
 
     return { success: true, message: "Friend request declined" };
   }
