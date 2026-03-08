@@ -19,7 +19,7 @@ class UploadService {
       const imageType = matches[1];
       const imageData = matches[2];
       
-      const validImageTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+      const validImageTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'dng'];
       if (!validImageTypes.includes(imageType.toLowerCase())) {
         return null;
       }

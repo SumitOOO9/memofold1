@@ -1,4 +1,5 @@
 const NotificationRepository = require('../repositories/notififcationRepository');
+const PostRepository = require("../repositories/postRepository");
 const redis = require('../utils/cache');
 const PushService = require('./pushService');
 
@@ -74,6 +75,99 @@ class NotificationService {
     await redis.set(cacheKey, count, 300);
 
     return count;
+  }
+
+  static _getUtcDayBounds(date = new Date()) {
+    const start = new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      0,
+      0,
+      0,
+      0
+    ));
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+    return { start, end };
+  }
+
+  static async sendMemoryAnniversaryNotificationsForToday(io = null) {
+    const now = new Date();
+    const { start, end } = this._getUtcDayBounds(now);
+    const posts = await PostRepository.findAnniversaryPostsForDate(now);
+    let createdCount = 0;
+
+    for (const post of posts) {
+      const yearsAgo = now.getUTCFullYear() - new Date(post.createdAt).getUTCFullYear();
+      if (yearsAgo < 1) continue;
+
+      const alreadySent = await NotificationRepository.existsMemoryNotificationToday(
+        post.userId,
+        post._id,
+        yearsAgo,
+        start,
+        end
+      );
+      if (alreadySent) continue;
+
+      const notification = await this.createNotification({
+        receiver: post.userId,
+        sender: post.userId,
+        type: "memory",
+        postid: post._id,
+        title: `${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago`,
+        message: `This post was shared ${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago`,
+        metadata: {
+          // Keep this field for existing unique index compatibility.
+          commentId: `memory:${post._id}:${yearsAgo}`,
+          yearsAgo,
+          post: {
+            id: post._id,
+            userId: post.userId,
+            username: post.username,
+            content: post.content || "",
+            image: post.image || "",
+            videoUrl: post.videoUrl || "",
+            media: post.media || null,
+            createdAt: post.createdAt
+          }
+        }
+      });
+
+      if (io) {
+        io.to(post.userId.toString()).emit("newNotification", {
+          message: `This post was shared ${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago`,
+          notification: {
+            _id: notification._id,
+            type: notification.type,
+            postid: notification.postid,
+            metadata: notification.metadata,
+            createdAt: notification.createdAt
+          }
+        });
+      }
+
+      createdCount += 1;
+    }
+
+    return createdCount;
+  }
+
+  static startMemoryAnniversaryScheduler(io = null) {
+    if (this._memoryScheduler) return;
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    this.sendMemoryAnniversaryNotificationsForToday(io).catch((error) => {
+      console.error("Memory anniversary notification run failed:", error.message);
+    });
+
+    this._memoryScheduler = setInterval(() => {
+      this.sendMemoryAnniversaryNotificationsForToday(io).catch((error) => {
+        console.error("Memory anniversary notification run failed:", error.message);
+      });
+    }, ONE_DAY_MS);
   }
 }
 
