@@ -10,14 +10,20 @@ const uploadSingle = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
 
-    const imageTypes = /jpeg|jpg|png|gif|webp/;
+    const imageTypes = /jpeg|jpg|png|gif|webp|dng/;
     const videoTypes = /mp4|mov|avi|mkv|webm/;
 
     const ext = file.originalname.toLowerCase();
     const mime = file.mimetype;
+    const isDngByExtension = ext.endsWith(".dng");
+    const isDngMime =
+      mime === "image/x-adobe-dng" ||
+      mime === "image/dng" ||
+      mime === "application/octet-stream";
 
     const isImage =
-      imageTypes.test(ext) && imageTypes.test(mime);
+      (imageTypes.test(ext) && (imageTypes.test(mime) || mime.startsWith("image/"))) ||
+      (isDngByExtension && isDngMime);
 
     const isVideo =
       videoTypes.test(ext) && mime.startsWith("video/");

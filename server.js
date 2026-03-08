@@ -14,6 +14,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const streamRoutes = require("./routes/stream");
 const pushRoutes = require("./routes/pushRoute");
+const NotificationService = require("./service/notificationService");
 const cookieParser = require("cookie-parser");
 
 // const profileRoutes = require("./routes/profileRoutes");
@@ -35,6 +36,7 @@ const onlineUsers = new Map();
 const PORT = process.env.PORT || 3000;
 
 connectDb();
+NotificationService.startMemoryAnniversaryScheduler(io);
 
 app.use(cookieParser());
 securityMiddleware(app);

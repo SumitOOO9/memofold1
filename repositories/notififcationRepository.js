@@ -36,6 +36,18 @@ class NotificationRepository {
     return await notif.save();
   }
 
+  static async existsMemoryNotificationToday(receiver, postid, yearsAgo, dayStart, dayEnd) {
+    const existing = await Notification.findOne({
+      receiver,
+      postid,
+      type: "memory",
+      "metadata.yearsAgo": yearsAgo,
+      createdAt: { $gte: dayStart, $lt: dayEnd }
+    }).select("_id");
+
+    return !!existing;
+  }
+
   static async delete(filter) {
     return await Notification.deleteMany(filter);
   }

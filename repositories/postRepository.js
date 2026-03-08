@@ -11,6 +11,24 @@ class PostRepository {
     return await post.save();
   }
 
+  static async findAnniversaryPostsForDate(date = new Date()) {
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    const currentYear = date.getUTCFullYear();
+
+    return Post.find({
+      $expr: {
+        $and: [
+          { $eq: [{ $month: "$createdAt" }, month] },
+          { $eq: [{ $dayOfMonth: "$createdAt" }, day] },
+          { $lte: [{ $year: "$createdAt" }, currentYear - 1] }
+        ]
+      }
+    })
+      .select("_id userId username content image videoUrl media createdAt")
+      .lean();
+  }
+
   static async findPostMediaByIdAndUser(postId, userId) {
     return Post.findOne(
       { _id: postId, userId },
