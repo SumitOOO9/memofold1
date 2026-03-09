@@ -7,7 +7,9 @@ exports.authenticate = async (req, res, next) => {
 
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    const accessSecret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    if (!accessSecret) return res.status(500).json({ msg: "JWT secret is not configured" });
+    const decoded = jwt.verify(token, accessSecret);
     const user = await User.findById(decoded.id).select("username email realname");
     if (!user) return res.status(401).json({ msg: "Invalid user" });
 
@@ -19,8 +21,8 @@ exports.authenticate = async (req, res, next) => {
       profilePic: user.profilePic,
       email: user.email,
     };
-    next();
+    return next();
   } catch {
-    res.sendStatus(401).json({ msg: "Invalid token" });
+    return res.status(401).json({ msg: "Invalid token" });
   }
 };
