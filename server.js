@@ -79,6 +79,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 app.use((err, req, res, next) => {
   console.error("Global Error:", err);
+  if (res.headersSent) {
+    return next(err);
+  }
 
   if (err.name === "MulterError") {
     return res.status(400).json({

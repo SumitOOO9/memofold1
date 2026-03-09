@@ -92,15 +92,21 @@ class NotificationService {
     return { start, end };
   }
 
+  static _buildMemoryMessage(yearsAgo) {
+    return `This post was shared ${yearsAgo} yr ago`;
+  }
+
   static async sendMemoryAnniversaryNotificationsForToday(io = null) {
-    const now = new Date();
-    const { start, end } = this._getUtcDayBounds(now);
-    const posts = await PostRepository.findAnniversaryPostsForDate(now);
+    const runDate = new Date();
+    const { start, end } = this._getUtcDayBounds(runDate);
+    const posts = await PostRepository.findAnniversaryPostsForDate(runDate);
     let createdCount = 0;
 
     for (const post of posts) {
-      const yearsAgo = now.getUTCFullYear() - new Date(post.createdAt).getUTCFullYear();
+      const yearsAgo = runDate.getUTCFullYear() - new Date(post.createdAt).getUTCFullYear();
       if (yearsAgo < 1) continue;
+
+      const message = this._buildMemoryMessage(yearsAgo);
 
       const alreadySent = await NotificationRepository.existsMemoryNotificationToday(
         post.userId,
@@ -116,8 +122,8 @@ class NotificationService {
         sender: post.userId,
         type: "memory",
         postid: post._id,
-        title: `${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago`,
-        message: `This post was shared ${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago`,
+        title: `${yearsAgo} yr ago`,
+        message,
         metadata: {
           // Keep this field for existing unique index compatibility.
           commentId: `memory:${post._id}:${yearsAgo}`,
@@ -137,7 +143,7 @@ class NotificationService {
 
       if (io) {
         io.to(post.userId.toString()).emit("newNotification", {
-          message: `This post was shared ${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago`,
+          message,
           notification: {
             _id: notification._id,
             type: notification.type,
