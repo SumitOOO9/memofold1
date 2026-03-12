@@ -19,13 +19,28 @@ class UploadService {
       const imageType = matches[1];
       const imageData = matches[2];
       
-      const validImageTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'dng'];
-      if (!validImageTypes.includes(imageType.toLowerCase())) {
+      const normalizedImageType = imageType.toLowerCase();
+      const validImageTypes = [
+        'jpeg',
+        'jpg',
+        'png',
+        'gif',
+        'webp',
+        'dng',
+        'x-adobe-dng',
+        'heic',
+        'heif',
+        'avif',
+        'bmp',
+        'tif',
+        'tiff'
+      ];
+      if (!validImageTypes.includes(normalizedImageType)) {
         return null;
       }
 
       const result = await cloudinary.uploader.upload(
-        `data:image/${imageType};base64,${imageData}`,
+        `data:image/${normalizedImageType};base64,${imageData}`,
         {
           folder: 'posts',
           public_id: `post_${userId}_${Date.now()}`,
