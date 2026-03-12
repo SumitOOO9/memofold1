@@ -1,6 +1,7 @@
 const multer = require("multer");
 const streamifier = require("streamifier");
 const cloudinary = require("../config/cloudinary");
+const path = require("path");
 
 // Use memory storage, not disk
 const storage = multer.memoryStorage();
@@ -9,24 +10,47 @@ const uploadSingle = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
+    const allowedImageExtensions = [
+      ".jpeg",
+      ".jpg",
+      ".png",
+      ".gif",
+      ".webp",
+      ".dng",
+      ".heic",
+      ".heif",
+      ".avif",
+      ".bmp",
+      ".tif",
+      ".tiff"
+    ];
+    const allowedImageMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/dng",
+      "image/x-adobe-dng",
+      "image/heic",
+      "image/heif",
+      "image/avif",
+      "image/bmp",
+      "image/tiff"
+    ];
+    const allowedVideoExtensions = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
 
-    const imageTypes = /jpeg|jpg|png|gif|webp|dng/;
-    const videoTypes = /mp4|mov|avi|mkv|webm/;
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
 
-    const ext = file.originalname.toLowerCase();
-    const mime = file.mimetype;
-    const isDngByExtension = ext.endsWith(".dng");
-    const isDngMime =
-      mime === "image/x-adobe-dng" ||
-      mime === "image/dng" ||
-      mime === "application/octet-stream";
+    const isRawLikeByExtension = [".dng", ".heic", ".heif"].includes(ext);
+    const isImageByExtension = allowedImageExtensions.includes(ext);
+    const isImageByMime =
+      allowedImageMimes.includes(mime) || mime.startsWith("image/");
+    const isRawWithGenericMime = isRawLikeByExtension && mime === "application/octet-stream";
 
-    const isImage =
-      (imageTypes.test(ext) && (imageTypes.test(mime) || mime.startsWith("image/"))) ||
-      (isDngByExtension && isDngMime);
-
-    const isVideo =
-      videoTypes.test(ext) && mime.startsWith("video/");
+    const isImage = (isImageByExtension && isImageByMime) || isRawWithGenericMime;
+    const isVideo = allowedVideoExtensions.includes(ext) && mime.startsWith("video/");
 
     if (isImage || isVideo) {
       cb(null, true);
